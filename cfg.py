@@ -1,9 +1,10 @@
 DEFAULTS = {
     'general': {
         "port":         4000,
-        "address":      "::",
+        "address":      "", ##all
         "config":       "/etc/cncd.conf",
         "log_level":    "ERROR",
+        "library":      "/var/lib/gcode",
     }
 }
 
@@ -29,11 +30,11 @@ def parse_args(defaults):
     return args
 
 def print_config(cfg):
-    log.info("Using configuration:")
+    log.debug("Using configuration:")
     for section in cfg.sections():
-        log.info("[{}]".format(section))
+        log.debug("[{}]".format(section))
         for key, value in cfg[section].items():
-            log.info("  {} = {}".format(key, value))
+            log.debug("  {} = {}".format(key, value))
 
 def read_config(defaults, args):
     from configparser import ConfigParser
@@ -45,10 +46,11 @@ def read_config(defaults, args):
     for arg in vars(args):
         value = getattr(args, arg)
         if value == None: continue
-        log.critical("Overwriting default value for {} with {}".format(
+        log.debug("Overwriting default value for {} with {}".format(
                 arg, value))
         general[arg] = str(value)
 
+    log.info("Loading configuration file \"{}\"".format(general["config"]))
     if not cfg.read(general["config"]):
         log.error("Could not load any configuration file")
 
