@@ -2,41 +2,81 @@
 from cfg import load_configuration
 import logging as log
 import asyncio
+import shlex
 
 class Device():
     def __init__(self, dev_cfg):
         self.cfg = dev_cfg
         log.info("Added device \"{}\"".format(self.cfg.name))
 
-@asyncio.coroutine
-def handle_echo(reader, writer):
-    global cfg
-    addr = writer.get_extra_info('peername')
-    log.info("New connection from {}".format(addr))
-    data = yield from reader.read(100)
-    message = data.decode()
-    log.debug("Received %r from %r" % (message, addr))
+class Handler:
+    def __init__(self, cb):
+        self.cb = cb
+    def handle(self, argv, ctx, transport):
+        if argv[0] != self.cb.__name__:
+            return False
+        self.cb(argv, ctx, transport)
+        return True
 
-    log.debug("Send: %r" % message)
-    writer.write(data)
-    yield from writer.drain()
+class TCP_handler(asyncio.Protocol):
+    def __init__(self, ctx):
+        self.ctx = ctx
+        log.debug("instantiating new connection")
+    def connection_made(self, transport):
+        self.transport = transport
+        peername = transport.get_extra_info('peername')
+        log.info('Connection from {}'.format(peername))
+        transport.write(">>> welcome\n".encode())
 
-    log.info("Close the client socket")
-    writer.close()
+    def data_received(self, raw):
+        data = raw.decode().strip()
+        lines = data.split('\n')
+        for line in lines:
+            argv = shlex.split(line)
+            log.debug(argv)
+            if not argv: continue
+            handlers = self.ctx['hdl']
+            for handler in handlers:
+                if handler.handle(argv, self.ctx, self.transport):
+                    break
+            else:
+                log.warning("Unhandled input '{}'".format(line))
+                self.transport.write("UNRECONIZED COMMAND. Try 'help'.\n".encode())
+
+def quit(argv, ctx, transport):
+    transport.write("closing for you\n".encode())
+    transport.close()
+
+def terminate(argv, ctx, transport):
+    servers = ctx['srv']
+    for server in servers:
+        server.close()
+    loop = asyncio.get_event_loop()
+    loop.stop()
+
+def help(argv, ctx, transport):
+    transport.write("I don't know what to do!\n".encode())
 
 # this will take care of config file, defaults commandline arguments and
 # setting log levels
-cfg = load_configuration()
-general = cfg["general"]
+CTX = {}
+CTX['cfg'] = load_configuration()
+CTX['dev'] = [Device(cfg[name]) for name in CTX['cfg'].sections() if name != "general"]
+CTX['hdl'] = []
+CTX['hdl'].append( Handler(quit) )
+CTX['hdl'].append( Handler(help) )
+CTX['hdl'].append( Handler(terminate) )
+CTX['srv'] = []
+CTX['loop'] = None
 
-dev_names = [name for name in cfg.sections() if name != "general"]
-devs = [Device(cfg[name]) for name in dev_names]
+general = CTX['cfg']["general"]
 
 loop = asyncio.get_event_loop()
-coro = asyncio.start_server(handle_echo, general["address"], general["port"], loop=loop)
+coro = loop.create_server(lambda: TCP_handler(CTX), general["address"], general["port"])
 server = loop.run_until_complete(coro)
-log.info('Serving on {}'.format(server.sockets[0].getsockname()))
+CTX['srv'].append(server)
 
+log.info('Serving on {}'.format(server.sockets[0].getsockname()))
 try:
     loop.run_forever()
 except KeyboardInterrupt:
@@ -44,8 +84,4 @@ except KeyboardInterrupt:
 
 server.close()
 loop.run_until_complete(server.wait_closed())
-## close existing connections
-print(dir(coro))
-asyncio.gather(*asyncio.Task.all_tasks()).cancel()
-loop.stop()
 loop.close()
