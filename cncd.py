@@ -16,7 +16,8 @@ class Handler:
     def handle(self, argv, ctx, transport):
         if argv[0] != self.cb.__name__:
             return False
-        self.cb(argv, ctx, transport)
+        loop = asyncio.get_event_loop()
+        loop.create_task(self.cb(argv, ctx, transport))
         return True
 
 class TCP_handler(asyncio.Protocol):
@@ -29,10 +30,12 @@ class TCP_handler(asyncio.Protocol):
         log.info('Connection from {}'.format(peername))
         transport.write(">>> welcome\n".encode())
     def connection_lost(self, ex):
-        log.debug("connection lost")
+        log.debug("Connection closed")
+    def eof_received(self):
+        log.debug("Received EOF")
+        return False
 
     def data_received(self, raw):
-        print(raw)
         try:
             data = raw.decode().strip()
         except UnicodeDecodeError:
@@ -56,11 +59,7 @@ CTX = {}
 CTX['cfg'] = load_configuration()
 CTX['dev'] = [Device(cfg[name]) for name in CTX['cfg'].sections() if name != "general"]
 CTX['hdl'] = [Handler(name) for name in handlers.handlers]
-#CTX['hdl'].append( Handler(quit) )
-#CTX['hdl'].append( Handler(help) )
-#CTX['hdl'].append( Handler(terminate) )
 CTX['srv'] = []
-CTX['loop'] = None
 
 general = CTX['cfg']["general"]
 
@@ -75,6 +74,9 @@ try:
 except KeyboardInterrupt:
     pass
 
-server.close()
+loop.run_until_complete(loop.shutdown_asyncgens())
+for server in CTX['srv']:
+    ## TODO close connections as well
+    server.close()
 loop.run_until_complete(server.wait_closed())
 loop.close()
