@@ -3,6 +3,7 @@ from cfg import load_configuration
 import logging as log
 import asyncio
 import shlex
+import handlers
 
 class Device():
     def __init__(self, dev_cfg):
@@ -27,45 +28,37 @@ class TCP_handler(asyncio.Protocol):
         peername = transport.get_extra_info('peername')
         log.info('Connection from {}'.format(peername))
         transport.write(">>> welcome\n".encode())
+    def connection_lost(self, ex):
+        log.debug("connection lost")
 
     def data_received(self, raw):
-        data = raw.decode().strip()
+        print(raw)
+        try:
+            data = raw.decode().strip()
+        except UnicodeDecodeError:
+            log.warning("I can't decode '{}' as unicode".format(raw))
+            return
         lines = data.split('\n')
         for line in lines:
             argv = shlex.split(line)
             log.debug(argv)
             if not argv: continue
-            handlers = self.ctx['hdl']
-            for handler in handlers:
+            cmd_handlers = self.ctx['hdl']
+            for handler in cmd_handlers:
                 if handler.handle(argv, self.ctx, self.transport):
                     break
             else:
-                log.warning("Unhandled input '{}'".format(line))
-                self.transport.write("UNRECONIZED COMMAND. Try 'help'.\n".encode())
-
-def quit(argv, ctx, transport):
-    transport.write("closing for you\n".encode())
-    transport.close()
-
-def terminate(argv, ctx, transport):
-    servers = ctx['srv']
-    for server in servers:
-        server.close()
-    loop = asyncio.get_event_loop()
-    loop.stop()
-
-def help(argv, ctx, transport):
-    transport.write("I don't know what to do!\n".encode())
+                handlers.last_resort(argv, self.ctx, self.transport)
 
 # this will take care of config file, defaults commandline arguments and
 # setting log levels
 CTX = {}
 CTX['cfg'] = load_configuration()
 CTX['dev'] = [Device(cfg[name]) for name in CTX['cfg'].sections() if name != "general"]
-CTX['hdl'] = []
-CTX['hdl'].append( Handler(quit) )
-CTX['hdl'].append( Handler(help) )
-CTX['hdl'].append( Handler(terminate) )
+CTX['hdl'] = [Handler(name) for name in handlers.handlers]
+#CTX['hdl'].append( Handler(quit) )
+#CTX['hdl'].append( Handler(help) )
+#CTX['hdl'].append( Handler(terminate) )
 CTX['srv'] = []
 CTX['loop'] = None
 
