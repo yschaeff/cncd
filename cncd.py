@@ -57,7 +57,7 @@ class TCP_handler(asyncio.Protocol):
 # setting log levels
 CTX = {}
 CTX['cfg'] = load_configuration()
-CTX['dev'] = [Device(cfg[name]) for name in CTX['cfg'].sections() if name != "general"]
+CTX['dev'] = [Device(CTX['cfg'][name]) for name in CTX['cfg'].sections() if name != "general"]
 CTX['hdl'] = [Handler(name) for name in handlers.handlers]
 CTX['srv'] = []
 
