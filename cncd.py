@@ -9,13 +9,27 @@ class Device():
     def __init__(self, dev_cfg):
         self.cfg = dev_cfg
         log.info("Added device \"{}\"".format(self.cfg.name))
+    def connect(self):
+        pass
+    def load_file(self, filename):
+        pass
+    def start(self):
+        pass
+    def pause(self):
+        pass
+    def stop(self):
+        pass
 
 class Handler:
     def __init__(self, cb):
         self.cb = cb
+
+    def handles(self, argv, exact=False):
+        if exact:
+            return argv[0] == self.cb.__name__
+        return self.cb.__name__.startswith(argv[0])
+
     def handle(self, argv, ctx, transport):
-        if argv[0] != self.cb.__name__:
-            return False
         loop = asyncio.get_event_loop()
         loop.create_task(self.cb(argv, ctx, transport))
         return True
@@ -46,37 +60,43 @@ class TCP_handler(asyncio.Protocol):
             argv = shlex.split(line)
             log.debug(argv)
             if not argv: continue
-            cmd_handlers = self.ctx['hdl']
+            cmd_handlers = [h for h in self.ctx['hdl'] if h.handles(argv)]
+            # if we have multiple we must have an exact match
+            exact = (len(cmd_handlers) != 1)
             for handler in cmd_handlers:
-                if handler.handle(argv, self.ctx, self.transport):
-                    break
+                if not handler.handles(argv, exact): continue
+                handler.handle(argv, self.ctx, self.transport)
+                break
             else:
                 handlers.last_resort(argv, self.ctx, self.transport)
 
-# this will take care of config file, defaults commandline arguments and
-# setting log levels
-CTX = {}
-CTX['cfg'] = load_configuration()
-CTX['dev'] = [Device(CTX['cfg'][name]) for name in CTX['cfg'].sections() if name != "general"]
-CTX['hdl'] = [Handler(name) for name in handlers.handlers]
-CTX['srv'] = []
-
-general = CTX['cfg']["general"]
-
 loop = asyncio.get_event_loop()
-coro = loop.create_server(lambda: TCP_handler(CTX), general["address"], general["port"])
-server = loop.run_until_complete(coro)
-CTX['srv'].append(server)
+CTX = {}
+while True:
+    # this will take care of config file, defaults commandline arguments and
+    # setting log levels
+    CTX['cfg'] = load_configuration()
+    CTX['dev'] = [Device(CTX['cfg'][name]) for name in CTX['cfg'].sections() if name != "general"]
+    CTX['hdl'] = [Handler(name) for name in handlers.handlers]
+    CTX['srv'] = []
+    CTX['reboot'] = False
 
-log.info('Serving on {}'.format(server.sockets[0].getsockname()))
-try:
-    loop.run_forever()
-except KeyboardInterrupt:
-    pass
+    general = CTX['cfg']["general"]
 
-loop.run_until_complete(loop.shutdown_asyncgens())
-for server in CTX['srv']:
-    ## TODO close connections as well
-    server.close()
-loop.run_until_complete(server.wait_closed())
+    coro = loop.create_server(lambda: TCP_handler(CTX), general["address"], general["port"])
+    server = loop.run_until_complete(coro)
+    CTX['srv'].append(server)
+
+    log.info('Serving on {}'.format(server.sockets[0].getsockname()))
+    try:
+        loop.run_forever()
+    except KeyboardInterrupt:
+        log.info("Okay shutting down")
+    finally:
+        loop.run_until_complete(loop.shutdown_asyncgens())
+        for server in CTX['srv']:
+            ## TODO close current connections as well
+            server.close()
+        loop.run_until_complete(server.wait_closed())
+    if not CTX['reboot']: break
 loop.close()

@@ -1,7 +1,8 @@
 DEFAULTS = {
     'general': {
         "port":         4000,
-        "address":      "", ##all
+        "address":      "localhost",
+        #"address":      "", ##all
         "config":       "/etc/cncd.conf",
         "log_level":    "ERROR",
         "library":      "/var/lib/gcode",
@@ -25,7 +26,8 @@ def parse_args(defaults):
         level = getattr(log, args.log_level.upper())
     else:
         level = general["log_level"]
-    log.basicConfig(level=level)
+    rootlogger = log.getLogger()
+    rootlogger.setLevel(level)
 
     return args
 
@@ -54,11 +56,13 @@ def read_config(defaults, args):
     if not cfg.read(general["config"]):
         log.error("Could not load any configuration file")
 
-    ## apply verbosity
-    level = getattr(log, general["log_level"].upper(), None)
-    if not isinstance(level, int):
-        raise ValueError('Invalid log level: %s' % level)
-    log.basicConfig(level=level)
+    if not args.log_level:
+        ## apply verbosity
+        level = getattr(log, general["log_level"].upper(), None)
+        if not isinstance(level, int):
+            raise ValueError('Invalid log level: %s' % level)
+        rootlogger = log.getLogger()
+        rootlogger.setLevel(level)
 
     print_config(cfg)
     return cfg
