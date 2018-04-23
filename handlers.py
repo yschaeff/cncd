@@ -42,7 +42,8 @@ async def lsdir(dirname):
 async def stat(gctx, cctx, lctx):
     libpath = gctx['cfg']['general']['library']
     files = await lsdir(libpath)
-    lctx.writeln(files)
+    for f in files:
+        lctx.writeln(f)
 
 async def dev(gctx, cctx, lctx):
     """List configured devices"""

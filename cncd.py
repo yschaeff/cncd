@@ -30,7 +30,14 @@ class Handler:
             return argv[0] == self.cb.__name__
         return self.cb.__name__.startswith(argv[0])
 
-def done_cb(gctx, cctx, lctx, task):
+def done_cb(gctx, cctx, lctx, future):
+    try:
+        r = future.result()
+    except Exception as e:
+        log.exception('Unexpected error')
+        lctx.writeln("Server side exception: {}".format(str(e)))
+        loop = asyncio.get_event_loop()
+        loop.stop()
     lctx.writeln('.')
 
 class TCP_handler(asyncio.Protocol):
