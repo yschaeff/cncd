@@ -30,20 +30,20 @@ class Handler:
             return argv[0] == self.cb.__name__
         return self.cb.__name__.startswith(argv[0])
 
-def done_cb(gctx, lctx, task):
+def done_cb(gctx, cctx, lctx, task):
     lctx.writeln('.')
 
 class TCP_handler(asyncio.Protocol):
     def __init__(self, ctx):
         self.gctx = ctx
+        self.cctx = {}
         self.uid = 0
         log.debug("instantiating new connection")
     def connection_made(self, transport):
-        self.transport = transport
+        self.cctx['transport'] = transport
         peername = transport.get_extra_info('peername')
         log.info('Connection from {}'.format(peername))
         transport.write(">>> welcome\n".encode())
-        self.transport.uid = self.uid
     def connection_lost(self, ex):
         log.debug("Connection closed")
     def eof_received(self):
@@ -80,11 +80,11 @@ class TCP_handler(asyncio.Protocol):
             def writeln(msg):
                 log.debug("Sending '{}'".format(msg))
                 line = str(msg) + '\n'
-                self.transport.write("{} {}".format(nonce, line).encode())
-            Lctx = namedtuple("Lctx", "transport nonce writeln argv")
-            lctx = Lctx(self.transport, nonce, writeln, argv)
-            task = asyncio.ensure_future(cb(self.gctx, lctx))
-            task.add_done_callback(functools.partial(done_cb, self.gctx, lctx))
+                self.cctx['transport'].write("{} {}".format(nonce, line).encode())
+            Lctx = namedtuple("Lctx", "nonce writeln argv")
+            lctx = Lctx(nonce, writeln, argv)
+            task = asyncio.ensure_future(cb(self.gctx, self.cctx, lctx))
+            task.add_done_callback(functools.partial(done_cb, self.gctx, self.cctx, lctx))
 
 loop = asyncio.get_event_loop()
 CTX = {}
