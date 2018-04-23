@@ -26,8 +26,7 @@ def parse_args(defaults):
         level = getattr(log, args.log_level.upper())
     else:
         level = general["log_level"]
-    rootlogger = log.getLogger()
-    rootlogger.setLevel(level)
+    log.getLogger().setLevel(level)
 
     return args
 

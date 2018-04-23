@@ -2,7 +2,7 @@
 from cfg import load_configuration
 from collections import namedtuple
 import logging as log
-import asyncio, functools
+import asyncio, functools, concurrent
 import shlex ##shell lexer
 import handlers
 
@@ -33,6 +33,8 @@ class Handler:
 def done_cb(gctx, cctx, lctx, future):
     try:
         r = future.result()
+    except concurrent.futures._base.CancelledError:
+        lctx.writeln('Task preemtively cancelled')
     except Exception as e:
         log.exception('Unexpected error')
         lctx.writeln("Server side exception: {}".format(str(e)))
@@ -52,7 +54,7 @@ class TCP_handler(asyncio.Protocol):
         log.info('Connection from {}'.format(peername))
         transport.write(">>> welcome\n".encode())
     def connection_lost(self, ex):
-        log.debug("Connection closed")
+        log.info('Closed connection')
     def eof_received(self):
         log.debug("Received EOF")
         return False
@@ -122,4 +124,9 @@ while True:
             server.close()
         loop.run_until_complete(server.wait_closed())
     if not CTX['reboot']: break
+
+pending = asyncio.Task.all_tasks()
+for task in pending: task.cancel()
+loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+
 loop.close()
