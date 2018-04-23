@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 from cfg import load_configuration
+from collections import namedtuple
 import logging as log
-import asyncio
-import shlex
+import asyncio, functools
+import shlex ##shell lexer
 import handlers
 
 class Device():
@@ -29,20 +30,20 @@ class Handler:
             return argv[0] == self.cb.__name__
         return self.cb.__name__.startswith(argv[0])
 
-    def handle(self, argv, ctx, transport):
-        loop = asyncio.get_event_loop()
-        loop.create_task(self.cb(argv, ctx, transport))
-        return True
+def done_cb(gctx, lctx, task):
+    lctx.writeln('.')
 
 class TCP_handler(asyncio.Protocol):
     def __init__(self, ctx):
-        self.ctx = ctx
+        self.gctx = ctx
+        self.uid = 0
         log.debug("instantiating new connection")
     def connection_made(self, transport):
         self.transport = transport
         peername = transport.get_extra_info('peername')
         log.info('Connection from {}'.format(peername))
         transport.write(">>> welcome\n".encode())
+        self.transport.uid = self.uid
     def connection_lost(self, ex):
         log.debug("Connection closed")
     def eof_received(self):
@@ -57,18 +58,33 @@ class TCP_handler(asyncio.Protocol):
             return
         lines = data.split('\n')
         for line in lines:
+            self.uid += 1
             argv = shlex.split(line)
             log.debug(argv)
-            if not argv: continue
-            cmd_handlers = [h for h in self.ctx['hdl'] if h.handles(argv)]
+            if not argv:
+                continue
+            try:
+                nonce = int(argv[0])
+                argv = argv[1:]
+            except ValueError:
+                nonce = self.uid
+            cmd_handlers = [h for h in self.gctx['hdl'] if h.handles(argv)]
             # if we have multiple we must have an exact match
             exact = (len(cmd_handlers) != 1)
+            cb = handlers.last_resort
             for handler in cmd_handlers:
                 if not handler.handles(argv, exact): continue
-                handler.handle(argv, self.ctx, self.transport)
+                cb = handler.cb
                 break
-            else:
-                handlers.last_resort(argv, self.ctx, self.transport)
+            ## we have a handler, construct a local context
+            def writeln(msg):
+                log.debug("Sending '{}'".format(msg))
+                line = str(msg) + '\n'
+                self.transport.write("{} {}".format(nonce, line).encode())
+            Lctx = namedtuple("Lctx", "transport nonce writeln argv")
+            lctx = Lctx(self.transport, nonce, writeln, argv)
+            task = asyncio.ensure_future(cb(self.gctx, lctx))
+            task.add_done_callback(functools.partial(done_cb, self.gctx, lctx))
 
 loop = asyncio.get_event_loop()
 CTX = {}
@@ -83,7 +99,7 @@ while True:
 
     general = CTX['cfg']["general"]
 
-    coro = loop.create_server(lambda: TCP_handler(CTX), general["address"], general["port"])
+    coro = loop.create_server(functools.partial(TCP_handler, CTX), general["address"], general["port"])
     server = loop.run_until_complete(coro)
     CTX['srv'].append(server)
 
