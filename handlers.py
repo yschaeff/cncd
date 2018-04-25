@@ -48,7 +48,6 @@ async def stat(gctx, cctx, lctx):
 async def dev(gctx, cctx, lctx):
     """List configured devices"""
     devs = gctx['dev']
-    lctx.writeln("Configured devices:")
     for i, dev in enumerate(devs):
         lctx.writeln(" {} - {}".format(i, dev.cfg.name))
 

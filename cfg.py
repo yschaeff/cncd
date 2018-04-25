@@ -17,8 +17,9 @@ def parse_args(defaults):
     parser = ArgumentParser()
     parser.add_argument("-c", "--config", help="Alternative configuration file",
             action="store")
-    parser.add_argument("-l", "--log-level", help="DEBUG, INFO, WARNING, ERROR, CRITICAL",
-            action="store")
+    parser.add_argument("-l", "--log-level",
+            choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+            type=str.upper, action="store")
     args = parser.parse_args()
 
     ## prelimenary log level
