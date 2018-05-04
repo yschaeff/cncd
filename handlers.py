@@ -45,11 +45,56 @@ async def stat(gctx, cctx, lctx):
     for f in files:
         lctx.writeln(f)
 
-async def dev(gctx, cctx, lctx):
+async def devlist(gctx, cctx, lctx):
     """List configured devices"""
     devs = gctx['dev']
-    for i, dev in enumerate(devs):
-        lctx.writeln(" {} - {}".format(i, dev.cfg.name))
+    for name in devs.keys():
+        lctx.writeln("{}".format(name))
+
+async def devctl(gctx, cctx, lctx):
+    """Control configured devices"""
+    devs = gctx['dev']
+    argv = lctx.argv
+    if len(argv) < 3:
+        lctx.writeln("ERROR Not enough arguments")
+        return
+    devname = argv[1]
+    command = argv[2]
+    dev = devs.get(devname)
+    if not dev:
+        lctx.writeln("ERROR Device not found")
+        return
+    if command.upper() == "STATUS":
+        status = dev.status()
+        lctx.writeln(status)
+    elif command.upper() == "CONNECT":
+        if dev.connect():
+            lctx.writeln("OK")
+        else:
+            lctx.writeln("ERROR")
+    elif command.upper() == "DISCONNECT":
+        if dev.disconnect():
+            lctx.writeln("OK")
+        else:
+            lctx.writeln("ERROR")
+
+async def gcode(gctx, cctx, lctx):
+    """List configured devices"""
+    devs = gctx['dev']
+    argv = lctx.argv
+    if len(argv) < 3:
+        lctx.writeln("ERROR Not enough arguments provided")
+        return
+    devname = argv[1]
+    dev = devs.get(devname)
+    if not dev:
+        lctx.writeln("ERROR Device not found")
+        return
+    gcode = argv[2]
+    if dev.send_gcode(gcode):
+        lctx.writeln("OK")
+    else:
+        lctx.writeln("ERROR")
 
 async def quit(gctx, cctx, lctx):
     """Disconnect this client."""
@@ -88,4 +133,4 @@ async def loglevel(gctx, cctx, lctx):
         return
     rootlogger.setLevel(level)
 
-handlers = [sleep, quit, shutdown, reboot, help, dev, loglevel, stat]
+handlers = [sleep, quit, shutdown, reboot, help, devctl, devlist, loglevel, stat, gcode]

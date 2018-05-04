@@ -10,8 +10,20 @@ class Device():
     def __init__(self, dev_cfg):
         self.cfg = dev_cfg
         log.info("Added device \"{}\"".format(self.cfg.name))
+        self.connected = False
+    def status(self):
+        s = "connected {}".format(self.connected)
+        return s
+    def send_gcode(self, gcode):
+        return True
     def connect(self):
-        pass
+        if self.connected:
+            return True
+        return False
+    def disconnect(self):
+        if self.disconnected:
+            return True
+        return False
     def load_file(self, filename):
         pass
     def start(self):
@@ -92,6 +104,7 @@ class TCP_handler(asyncio.Protocol):
                 self.cctx['transport'].write("{} {}".format(nonce, line).encode())
             Lctx = namedtuple("Lctx", "nonce writeln argv")
             lctx = Lctx(nonce, writeln, argv)
+            log.debug("gctx {} cctx {} lctx {}".format(self.gctx, self.cctx, lctx))
             task = asyncio.ensure_future(cb(self.gctx, self.cctx, lctx))
             task.add_done_callback(functools.partial(done_cb, self.gctx, self.cctx, lctx))
 
@@ -101,10 +114,14 @@ while True:
     # this will take care of config file, defaults commandline arguments and
     # setting log levels
     CTX['cfg'] = load_configuration()
-    CTX['dev'] = [Device(CTX['cfg'][name]) for name in CTX['cfg'].sections() if name != "general"]
     CTX['hdl'] = [Handler(name) for name in handlers.handlers]
     CTX['srv'] = []
     CTX['reboot'] = False
+    CTX['dev'] = {}
+    for name in CTX['cfg'].sections():
+        if name == "general": continue
+        CTX['dev'][name] = Device(CTX['cfg'][name])
+
 
     general = CTX['cfg']["general"]
 

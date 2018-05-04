@@ -10,17 +10,10 @@ import socket, sys, random
 parser = ArgumentParser()
 parser.add_argument("-p", "--port", help="daemon TCP port", type=int, action="store", required=True)
 group = parser.add_mutually_exclusive_group(required=True)
-group.add_argument("-d", "--device", help="Device to send GCODE to. If omitted don't send GCODE but list devices instead.", action="store", type=int)
 group.add_argument("-l", "--list-devices", help="List devices available at remote host", action="store_true")
-parser.add_argument("gcode", help="gcode to execute", action="store")
+group.add_argument("-d", "--device", help="Device to send GCODE to. If omitted don't send GCODE but list devices instead.", action="store")
+parser.add_argument("-g", "--gcode", help="gcode to execute", action="store")
 args = parser.parse_args()
-
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-try:
-    s.connect(("localhost", args.port))
-except ConnectionRefusedError as e:
-    print(e)
-    sys.exit(1)
 
 def readlines(s):
     buf = b""
@@ -47,10 +40,34 @@ def query(s, q):
     s.send("{} {}\n".format(nonce, q).encode())
     return readmsg(s, nonce)
 
-if args.list_devices:
-    msg = query(s, "dev")
+def response_is_OK(resp):
+    if len(resp) < 1: return False
+    line = resp[0]
+    return line.strip().startswith("OK")
+
+with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+    try:
+        s.connect(("localhost", args.port))
+    except ConnectionRefusedError as e:
+        print(e)
+        sys.exit(1)
+
+    if args.list_devices:
+        msg = query(s, "devlist")
+        for line in msg:
+            print(line)
+        sys.exit(0)
+    elif not args.gcode:
+        # device MUST be set
+        msg = query(s, "devctl '{}' status".format(args.device))
+        for line in msg:
+            print(line)
+        sys.exit(0)
+
+    msg = query(s, "gcode '{}' '{}'".format(args.device, args.gcode))
     for line in msg:
         print(line)
+    succes = response_is_OK(msg)
 
-s.close()
+    sys.exit(not succes)
 
