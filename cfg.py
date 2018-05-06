@@ -10,6 +10,7 @@ DEFAULTS = {
 }
 
 import logging as log
+import coloredlogs
 
 def parse_args(defaults):
     from argparse import ArgumentParser
@@ -69,6 +70,7 @@ def read_config(defaults, args):
 
 def load_configuration():
     global DEFAULTS
+    coloredlogs.install(level='DEBUG')
     args = parse_args(DEFAULTS)
     return read_config(DEFAULTS, args)
 

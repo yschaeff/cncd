@@ -4,26 +4,42 @@ from collections import namedtuple
 import logging as log
 import asyncio, functools, concurrent
 import shlex ##shell lexer
-import handlers
+import handlers, serial
 
 class Device():
     def __init__(self, dev_cfg):
         self.cfg = dev_cfg
+        self.con = None
         log.info("Added device \"{}\"".format(self.cfg.name))
+        log.debug(dir(dev_cfg))
         self.connected = False
     def status(self):
         s = "connected {}".format(self.connected)
         return s
     def send_gcode(self, gcode):
+        if not self.con:
+            log.error("not connected")
+            return False
+        self.con.write(gcode.encode())
+        self.con.write('\n'.encode())
+        l = self.con.read(1)
+        log.debug(l)
         return True
     def connect(self):
-        if self.connected:
+        if self.con:
             return True
-        return False
+        try:
+            self.con = serial.Serial(self.cfg["port"], self.cfg["baud"])
+        except serial.serialutil.SerialException:
+            log.critical("Failed to open serial device")
+            return False
+        print(self.con.name)         # check which port was really used
+        return True
     def disconnect(self):
-        if self.disconnected:
-            return True
-        return False
+        if self.con:
+            self.con.close()
+            self.con = None
+        return True
     def load_file(self, filename):
         pass
     def start(self):
