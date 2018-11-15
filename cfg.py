@@ -46,11 +46,9 @@ def read_config(defaults, args):
 
     ## Now, let anything in args overwrite defaults
     general = cfg['general']
-    for arg in vars(args):
-        value = getattr(args, arg)
+    for arg, value in vars(args).items():
         if value == None: continue
-        log.debug("Overwriting default value for {} with {}".format(
-                arg, value))
+        log.debug("Overwriting default value for {} with {}".format(arg, value))
         general[arg] = str(value)
 
     log.info("Loading configuration file \"{}\"".format(general["config"]))

@@ -4,7 +4,7 @@ import os
 
 """
 gctx - Global context. No direct writes allowed
-cctx - connection context. Think before writing. multiple commands may exec parallel.
+cctx - connection context. Think before writing. Multiple commands may exec parallel.
 lctx - Local context. Write at will.
 """
 
@@ -51,6 +51,15 @@ async def devlist(gctx, cctx, lctx):
     for name in devs.keys():
         lctx.writeln("{}".format(name))
 
+async def dumpconfig(gctx, cctx, lctx):
+    """List configuration file"""
+    cfg = gctx['cfg']
+    for title, section in cfg.items():
+        lctx.writeln("[{}]".format(title))
+        for key, value in section.items():
+            lctx.writeln("{} = {}".format(key, value))
+        lctx.writeln("")
+
 async def devctl(gctx, cctx, lctx):
     """Control configured devices"""
     devs = gctx['dev']
@@ -94,7 +103,7 @@ async def gcode(gctx, cctx, lctx):
     if dev.send_gcode(gcode):
         lctx.writeln("OK")
     else:
-        lctx.writeln("ERROR")
+        lctx.writeln("ERROR Device not connected?")
 
 async def quit(gctx, cctx, lctx):
     """Disconnect this client."""
@@ -133,4 +142,4 @@ async def loglevel(gctx, cctx, lctx):
         return
     rootlogger.setLevel(level)
 
-handlers = [sleep, quit, shutdown, reboot, help, devctl, devlist, loglevel, stat, gcode]
+handlers = [sleep, quit, shutdown, reboot, help, devctl, devlist, loglevel, stat, gcode, dumpconfig]

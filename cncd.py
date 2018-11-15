@@ -5,6 +5,7 @@ import logging as log
 import asyncio, functools, concurrent
 import shlex ##shell lexer
 import handlers, serial
+import os
 
 class Device():
     def __init__(self, dev_cfg):
@@ -108,11 +109,12 @@ class TCP_handler(asyncio.Protocol):
             cmd_handlers = [h for h in self.gctx['hdl'] if h.handles(argv)]
             # if we have multiple we must have an exact match
             exact = (len(cmd_handlers) != 1)
-            cb = handlers.last_resort
             for handler in cmd_handlers:
                 if not handler.handles(argv, exact): continue
                 cb = handler.cb
                 break
+            else:
+                cb = handlers.last_resort
             ## we have a handler, construct a local context
             def writeln(msg):
                 log.debug("Sending '{}'".format(msg))
@@ -123,6 +125,10 @@ class TCP_handler(asyncio.Protocol):
             log.debug("gctx {} cctx {} lctx {}".format(self.gctx, self.cctx, lctx))
             task = asyncio.ensure_future(cb(self.gctx, self.cctx, lctx))
             task.add_done_callback(functools.partial(done_cb, self.gctx, self.cctx, lctx))
+
+if not os.geteuid():
+    log.fatal('Thou Shalt Not Run As Root.')
+    exit(1)
 
 loop = asyncio.get_event_loop()
 CTX = {}
