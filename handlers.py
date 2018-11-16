@@ -91,26 +91,30 @@ async def dumpconfig(gctx, cctx, lctx):
             lctx.writeln("{} = {}".format(key, value))
         lctx.writeln("")
 
-@nargs(3)
+@nargs(2)
 @parse_device
-async def devctl(gctx, cctx, lctx, dev):
+async def connect(gctx, cctx, lctx, dev):
     """Control configured devices"""
-    command = lctx.argv[2]
-    if command.upper() == "STATUS":
-        status = dev.status()
-        lctx.writeln(status)
-    elif command.upper() == "CONNECT":
-        if dev.connect():
-            lctx.writeln("OK")
-        else:
-            lctx.writeln("ERROR")
-    elif command.upper() == "DISCONNECT":
-        if dev.disconnect():
-            lctx.writeln("OK")
-        else:
-            lctx.writeln("ERROR")
+    if dev.connect():
+        lctx.writeln("OK")
     else:
         lctx.writeln("ERROR")
+
+@nargs(2)
+@parse_device
+async def disconnect(gctx, cctx, lctx, dev):
+    """Control configured devices"""
+    if dev.disconnect():
+        lctx.writeln("OK")
+    else:
+        lctx.writeln("ERROR")
+
+@nargs(2)
+@parse_device
+async def status(gctx, cctx, lctx, dev):
+    """Control configured devices"""
+    status = dev.status()
+    lctx.writeln(status)
 
 @nargs(3)
 @parse_device
@@ -180,4 +184,4 @@ async def loglevel(gctx, cctx, lctx):
         return
     rootlogger.setLevel(level)
 
-handlers = [sleep, quit, shutdown, reboot, help, devctl, devlist, loglevel, stat, gcode, dumpconfig, load, start]
+handlers = [sleep, quit, shutdown, reboot, help, status, connect, disconnect, devlist, loglevel, stat, gcode, dumpconfig, load, start]
