@@ -123,6 +123,15 @@ async def load(gctx, cctx, lctx, dev):
     else:
         lctx.writeln("ERROR")
 
+@nargs(2)
+@parse_device
+async def start(gctx, cctx, lctx, dev):
+    """start executing gcode"""
+    if dev.start():
+        lctx.writeln("OK")
+    else:
+        lctx.writeln("ERROR")
+
 @nargs(3)
 @parse_device
 async def gcode(gctx, cctx, lctx, dev):
@@ -171,4 +180,4 @@ async def loglevel(gctx, cctx, lctx):
         return
     rootlogger.setLevel(level)
 
-handlers = [sleep, quit, shutdown, reboot, help, devctl, devlist, loglevel, stat, gcode, dumpconfig, load]
+handlers = [sleep, quit, shutdown, reboot, help, devctl, devlist, loglevel, stat, gcode, dumpconfig, load, start]

@@ -31,11 +31,14 @@ class Device():
         if self.con:
             return True
         try:
-            self.con = serial.Serial(self.cfg["port"], self.cfg["baud"])
+            self.con = serial.Serial(self.cfg["port"], self.cfg["baud"], timeout=0)
         except serial.serialutil.SerialException:
             log.critical("Failed to open serial device")
             return False
         print(self.con.name)         # check which port was really used
+        while self.con.in_waiting:
+            rx = self.con.readline()
+            log.info("PRINTER: {}".format(rx.decode()))
         return True
     def disconnect(self):
         if self.con:
@@ -45,8 +48,35 @@ class Device():
     def load_file(self, filename):
         self.gcodefile = filename
         return True
-    def start(self):
-        pass
+    def start(self): ## rename print file?
+        if not self.gcodefile: return False ## emit warning
+        if not self.con: return False
+
+        ## first read all the lines in the buffer
+        while self.con.in_waiting:
+            rx = self.con.readline()
+            log.info("PRINTER: {}".format(rx.decode()))
+
+        with open(self.gcodefile) as fd:
+            for line in fd:
+                idx = line.rfind(';')
+                if idx>=0: line = line[:idx]
+                gcode = line.strip() + '\n'
+                print(gcode)
+                self.con.write(gcode.encode())
+                ## wait for response
+                rx = self.con.readline()
+                log.info("PRINTER: {}".format(rx.decode()))
+
+                #l = self.con.read(1)
+                #l = self.con.readline()
+                #log.debug(l)
+                #import time
+                #time.sleep(2)
+                #while self.con.in_waiting:
+                    #rx = self.con.readline()
+                    #log.info("PRINTER: {}".format(rx.decode()))
+        return True
     def pause(self):
         pass
     def stop(self):
