@@ -149,11 +149,20 @@ while True:
 
     general = CTX['cfg']["general"]
 
-    coro = loop.create_server(functools.partial(TCP_handler, CTX), general["address"], general["port"])
+    ##TCP
+    coro = loop.create_server(functools.partial(TCP_handler, CTX),
+            general["address"], general["port"])
     server = loop.run_until_complete(coro)
     CTX['srv'].append(server)
-
     log.info('Serving on {}'.format(server.sockets[0].getsockname()))
+
+    ##UNIX
+    coro = loop.create_unix_server(functools.partial(TCP_handler, CTX),
+            path=general["unix_socket"])
+    server = loop.run_until_complete(coro)
+    CTX['srv'].append(server)
+    log.info('Serving on {}'.format(server.sockets[0].getsockname()))
+
     try:
         loop.run_forever()
     except KeyboardInterrupt:

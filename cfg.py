@@ -3,6 +3,7 @@ DEFAULTS = {
         "port":         4000,
         "address":      "localhost",
         #"address":      "", ##all
+        "unix_socket":  "/var/run/cncd/cncd.sock",
         "config":       "/etc/cncd.conf",
         "log_level":    "ERROR",
         "library":      "/var/lib/gcode",
