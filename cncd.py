@@ -14,6 +14,7 @@ class Device():
         log.info("Added device \"{}\"".format(self.cfg.name))
         log.debug(dir(dev_cfg))
         self.connected = False
+        self.gcodefile = None
     def status(self):
         s = "connected {}".format(self.connected)
         return s
@@ -42,7 +43,8 @@ class Device():
             self.con = None
         return True
     def load_file(self, filename):
-        pass
+        self.gcodefile = filename
+        return True
     def start(self):
         pass
     def pause(self):
@@ -66,7 +68,7 @@ def done_cb(gctx, cctx, lctx, future):
         lctx.writeln('Task preemtively cancelled')
     except Exception as e:
         log.exception('Unexpected error')
-        lctx.writeln("Server side exception: {}".format(str(e)))
+        lctx.writeln("ERROR Server side exception: {}".format(str(e)))
         loop = asyncio.get_event_loop()
         loop.stop()
     lctx.writeln('.')
