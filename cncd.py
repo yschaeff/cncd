@@ -5,6 +5,7 @@ import logging as log
 import asyncio, functools, concurrent
 import shlex ##shell lexer
 import handlers, serial
+import serial_asyncio
 import os
 
 class Device():
@@ -27,18 +28,52 @@ class Device():
         l = self.con.read(1)
         log.debug(l)
         return True
+
     def connect(self):
-        if self.con:
-            return True
-        try:
-            self.con = serial.Serial(self.cfg["port"], self.cfg["baud"], timeout=0)
-        except serial.serialutil.SerialException:
-            log.critical("Failed to open serial device")
-            return False
-        print(self.con.name)         # check which port was really used
-        while self.con.in_waiting:
-            rx = self.con.readline()
-            log.info("PRINTER: {}".format(rx.decode()))
+        def done_cb(future):
+            try:
+                r = future.result()
+            except concurrent.futures._base.CancelledError:
+                log.warning('Task preemtively cancelled')
+            except FileNotFoundError as e:
+                print("ERROR {}".format(str(e)))
+            except serial.serialutil.SerialException as e:
+                log.critical("ERROR {}".format(str(e)))
+            except Exception as e:
+                print("ERROR Server side exception: {}".format(str(e)))
+            else:
+                print("AIGHT")
+
+        class SerialHandler(asyncio.Protocol):
+            #def __init__(self, A 3D PRINTER!
+            def connection_made(self, transport):
+                self.transport = transport
+                log.info("Serial port {} opened".format(transport.serial.name))
+                log.debug('Serial properties: {}'.format(transport))
+                #transport.write(b'Hello, World!\n')  # Write serial data via transport
+
+            def data_received(self, data):
+                print('data received', repr(data))
+                #if b'\n' in data:
+                    #self.transport.close()
+
+            def connection_lost(self, exc):
+                print('port closed')
+                self.transport.loop.stop()
+
+            def pause_writing(self):
+                print('pause writing')
+                print(self.transport.get_write_buffer_size())
+
+            def resume_writing(self):
+                print(self.transport.get_write_buffer_size())
+                print('resume writing')
+
+        loop = asyncio.get_event_loop()
+        coro = serial_asyncio.create_serial_connection(loop, SerialHandler,
+                self.cfg["port"], baudrate=self.cfg["baud"])
+        task = asyncio.ensure_future(coro)
+        task.add_done_callback(done_cb)
         return True
     def disconnect(self):
         if self.con:
@@ -103,8 +138,9 @@ def done_cb(gctx, cctx, lctx, future):
         loop.stop()
     lctx.writeln('.')
 
-class TCP_handler(asyncio.Protocol):
+class SocketHandler(asyncio.Protocol):
     def __init__(self, ctx):
+        super().__init__()
         self.gctx = ctx
         self.cctx = {}
         self.uid = 0
@@ -180,14 +216,14 @@ while True:
     general = CTX['cfg']["general"]
 
     ##TCP
-    coro = loop.create_server(functools.partial(TCP_handler, CTX),
+    coro = loop.create_server(functools.partial(SocketHandler, CTX),
             general["address"], general["port"])
     server = loop.run_until_complete(coro)
     CTX['srv'].append(server)
     log.info('Serving on {}'.format(server.sockets[0].getsockname()))
 
     ##UNIX
-    coro = loop.create_unix_server(functools.partial(TCP_handler, CTX),
+    coro = loop.create_unix_server(functools.partial(SocketHandler, CTX),
             path=general["unix_socket"])
     server = loop.run_until_complete(coro)
     CTX['srv'].append(server)
@@ -201,8 +237,9 @@ while True:
         loop.run_until_complete(loop.shutdown_asyncgens())
         for server in CTX['srv']:
             ## TODO close current connections as well
+            log.debug("shutting down service")
             server.close()
-        loop.run_until_complete(server.wait_closed())
+            loop.run_until_complete(server.wait_closed())
     if not CTX['reboot']: break
 
 pending = asyncio.Task.all_tasks()
