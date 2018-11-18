@@ -101,7 +101,7 @@ while True:
     CTX['dev'] = {}
     for name in CTX['cfg'].sections():
         if name == "general": continue
-        CTX['dev'][name] = robot.Device(CTX['cfg'][name])
+        CTX['dev'][name] = robot.Device(CTX['cfg'][name], CTX)
 
     general = CTX['cfg']["general"]
 

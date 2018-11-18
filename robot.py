@@ -3,9 +3,41 @@ import asyncio, functools, concurrent
 import serial
 import serial_asyncio
 
+
+class SerialHandler(asyncio.Protocol):
+    """Impements protocol"""
+    def __init__(self, device):
+        self.device = device
+        super().__init__()
+
+    def connection_made(self, transport):
+        self.transport = transport
+        log.info("Serial port {} opened".format(transport.serial.name))
+        log.debug('Serial properties: {}'.format(transport))
+        #transport.write(b'Hello, World!\n')  # Write serial data via transport
+
+    def data_received(self, data):
+        print('data received', repr(data))
+        #if b'\n' in data:
+            #self.transport.close()
+
+    def connection_lost(self, exc):
+        print('port closed')
+        #self.transport.loop.stop()
+
+    def pause_writing(self):
+        print('pause writing')
+        print(self.transport.get_write_buffer_size())
+
+    def resume_writing(self):
+        print(self.transport.get_write_buffer_size())
+        print('resume writing')
+
 class Device():
-    def __init__(self, dev_cfg):
+    """General CNC device, keeps state, buffers etc"""
+    def __init__(self, dev_cfg, gctx):
         self.cfg = dev_cfg
+        self.gctx = gctx
         self.con = None
         log.info("Added device \"{}\"".format(self.cfg.name))
         log.debug(dir(dev_cfg))
@@ -24,8 +56,9 @@ class Device():
         log.debug(l)
         return True
 
-    def connect(self):
-        def done_cb(future):
+    async def connect(self):
+        ## create serial server:
+        def done_cb(event, device, future):
             try:
                 r = future.result()
             except concurrent.futures._base.CancelledError:
@@ -38,38 +71,19 @@ class Device():
                 print("ERROR Server side exception: {}".format(str(e)))
             else:
                 print("AIGHT")
-
-        class SerialHandler(asyncio.Protocol):
-            #def __init__(self, A 3D PRINTER!
-            def connection_made(self, transport):
-                self.transport = transport
-                log.info("Serial port {} opened".format(transport.serial.name))
-                log.debug('Serial properties: {}'.format(transport))
-                #transport.write(b'Hello, World!\n')  # Write serial data via transport
-
-            def data_received(self, data):
-                print('data received', repr(data))
-                #if b'\n' in data:
-                    #self.transport.close()
-
-            def connection_lost(self, exc):
-                print('port closed')
-                #self.transport.loop.stop()
-
-            def pause_writing(self):
-                print('pause writing')
-                print(self.transport.get_write_buffer_size())
-
-            def resume_writing(self):
-                print(self.transport.get_write_buffer_size())
-                print('resume writing')
-
+                device.success = True
+            finally:
+                event.set()
+        event = asyncio.Event()
+        self.success = False
         loop = asyncio.get_event_loop()
         coro = serial_asyncio.create_serial_connection(loop, SerialHandler,
                 self.cfg["port"], baudrate=self.cfg["baud"])
         task = asyncio.ensure_future(coro)
-        task.add_done_callback(done_cb)
-        return True
+        task.add_done_callback(functools.partial(done_cb, event, self))
+        await event.wait()
+        return self.success
+
     def disconnect(self):
         if self.con:
             self.con.close()

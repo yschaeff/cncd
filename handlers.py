@@ -95,7 +95,7 @@ async def dumpconfig(gctx, cctx, lctx):
 @parse_device
 async def connect(gctx, cctx, lctx, dev):
     """Control configured devices"""
-    if dev.connect():
+    if await dev.connect():
         lctx.writeln("OK")
     else:
         lctx.writeln("ERROR")
