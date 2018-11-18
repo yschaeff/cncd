@@ -131,7 +131,7 @@ async def load(gctx, cctx, lctx, dev):
 @parse_device
 async def start(gctx, cctx, lctx, dev):
     """start executing gcode"""
-    if dev.start():
+    if await dev.start():
         lctx.writeln("OK")
     else:
         lctx.writeln("ERROR")

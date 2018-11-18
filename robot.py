@@ -9,6 +9,7 @@ class SerialHandler(asyncio.Protocol):
     def __init__(self, device):
         self.device = device
         device.handler = self
+        self.expect_close = False
         super().__init__()
 
     def connection_made(self, transport):
@@ -18,14 +19,14 @@ class SerialHandler(asyncio.Protocol):
         #transport.write(b'Hello, World!\n')  # Write serial data via transport
 
     def data_received(self, data):
-        print('data received', repr(data))
-        #if b'\n' in data:
-            #self.transport.close()
+        self.device.rx(data)
 
     def connection_lost(self, exc):
-        log.warning('Serial port closed')
+        if not self.expect_close:
+            log.error('Serial device vanished!')
+        else:
+            log.info('Serial port closed')
         self.device.handler = None
-        #self.transport.loop.stop()
 
     def pause_writing(self):
         print('pause writing')
@@ -46,8 +47,24 @@ class Device():
         self.connected = False
         self.gcodefile = None
         self.handler = None
+        self.input_buffer = b''
+
+
+    def rx(self, data):
+        self.input_buffer += data
+        while True:
+            index = self.input_buffer.find(b'\n')
+            if index < 0: break
+            line  = self.input_buffer[:index+1]
+            self.input_buffer = self.input_buffer[index+1:]
+            log.info("RX: {}".format(line))
+            if line.decode().strip() == 'ok':
+                self.response_event.set()
+            elif line.decode().strip() == 'ERROR':
+                self.respnse_event.set()
+
     def status(self):
-        s = "connected {}".format(self.connected)
+        s = "connected {}".format(self.handler != None)
         return s
     def send_gcode(self, gcode):
         if not self.con:
@@ -81,6 +98,7 @@ class Device():
             log.warning("Requested connect. But already connected.")
             return True
         event = asyncio.Event()
+        self.response_event = asyncio.Event()
         self.success = False
         loop = asyncio.get_event_loop()
         coro = serial_asyncio.create_serial_connection(loop, functools.partial(SerialHandler, self),
@@ -90,12 +108,14 @@ class Device():
         await event.wait()
         if self.success:
             log.info("Serial device connected successfully.")
+            self.input_buffer = b''
         else:
             log.error("Unable to open serial device.")
         return self.success
 
     def disconnect(self):
         if self.handler:
+            self.handler.expect_close = True
             self.handler.transport.close()
         else:
             log.warning("Requested disconnect. But not connected.")
@@ -103,14 +123,11 @@ class Device():
     def load_file(self, filename):
         self.gcodefile = filename
         return True
-    def start(self): ## rename print file?
+    async def start(self): ## rename print file?
         if not self.gcodefile: return False ## emit warning
-        if not self.con: return False
+        if not self.handler: return False
 
-        ## first read all the lines in the buffer
-        while self.con.in_waiting:
-            rx = self.con.readline()
-            log.info("PRINTER: {}".format(rx.decode()))
+        await asyncio.sleep(1)
 
         with open(self.gcodefile) as fd:
             for line in fd:
@@ -118,19 +135,10 @@ class Device():
                 if idx>=0: line = line[:idx]
                 gcode = line.strip() + '\n'
                 print(gcode)
-                self.con.write(gcode.encode())
+                self.handler.transport.write(gcode.encode())
                 ## wait for response
-                rx = self.con.readline()
-                log.info("PRINTER: {}".format(rx.decode()))
-
-                #l = self.con.read(1)
-                #l = self.con.readline()
-                #log.debug(l)
-                #import time
-                #time.sleep(2)
-                #while self.con.in_waiting:
-                    #rx = self.con.readline()
-                    #log.info("PRINTER: {}".format(rx.decode()))
+                await self.response_event.wait()
+                self.response_event.clear()
         return True
     def pause(self):
         pass
