@@ -8,6 +8,7 @@ class SerialHandler(asyncio.Protocol):
     """Impements protocol"""
     def __init__(self, device):
         self.device = device
+        device.handler = self
         super().__init__()
 
     def connection_made(self, transport):
@@ -22,7 +23,8 @@ class SerialHandler(asyncio.Protocol):
             #self.transport.close()
 
     def connection_lost(self, exc):
-        print('port closed')
+        log.warning('Serial port closed')
+        self.device.handler = None
         #self.transport.loop.stop()
 
     def pause_writing(self):
@@ -43,6 +45,7 @@ class Device():
         log.debug(dir(dev_cfg))
         self.connected = False
         self.gcodefile = None
+        self.handler = None
     def status(self):
         s = "connected {}".format(self.connected)
         return s
@@ -74,6 +77,9 @@ class Device():
                 device.success = True
             finally:
                 event.set()
+        if self.handler:
+            log.warning("Requested connect. But already connected.")
+            return True
         event = asyncio.Event()
         self.success = False
         loop = asyncio.get_event_loop()
@@ -82,12 +88,17 @@ class Device():
         task = asyncio.ensure_future(coro)
         task.add_done_callback(functools.partial(done_cb, event, self))
         await event.wait()
+        if self.success:
+            log.info("Serial device connected successfully.")
+        else:
+            log.error("Unable to open serial device.")
         return self.success
 
     def disconnect(self):
-        if self.con:
-            self.con.close()
-            self.con = None
+        if self.handler:
+            self.handler.transport.close()
+        else:
+            log.warning("Requested disconnect. But not connected.")
         return True
     def load_file(self, filename):
         self.gcodefile = filename
