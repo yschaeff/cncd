@@ -77,7 +77,7 @@ class Device():
         event = asyncio.Event()
         self.success = False
         loop = asyncio.get_event_loop()
-        coro = serial_asyncio.create_serial_connection(loop, SerialHandler,
+        coro = serial_asyncio.create_serial_connection(loop, functools.partial(SerialHandler, self),
                 self.cfg["port"], baudrate=self.cfg["baud"])
         task = asyncio.ensure_future(coro)
         task.add_done_callback(functools.partial(done_cb, event, self))
