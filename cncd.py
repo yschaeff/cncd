@@ -6,7 +6,7 @@ import asyncio, functools, concurrent
 import shlex ##shell lexer
 import handlers, robot, serial
 import serial_asyncio
-import os
+import os, socket
 
 class Handler:
     def __init__(self, cb):
@@ -38,8 +38,9 @@ class SocketHandler(asyncio.Protocol):
         log.debug("instantiating new connection")
     def connection_made(self, transport):
         self.cctx['transport'] = transport
-        peername = transport.get_extra_info('peername')
-        log.info('Connection from {}'.format(peername))
+        prop = ['peername','sockname'][transport.get_extra_info('socket').family == socket.AF_UNIX]
+        src = transport.get_extra_info(prop)
+        log.info('Connection from {}'.format(src))
         transport.write(">>> welcome\n".encode())
     def connection_lost(self, ex):
         log.info('Closed connection')

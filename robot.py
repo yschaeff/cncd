@@ -43,7 +43,7 @@ class Device():
         self.gctx = gctx
         self.con = None
         log.info("Added device \"{}\"".format(self.cfg.name))
-        log.debug(dir(dev_cfg))
+        #log.debug(dir(dev_cfg))
         self.connected = False
         self.gcodefile = None
         self.handler = None
