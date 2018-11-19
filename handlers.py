@@ -4,9 +4,10 @@ import logging as log
 import os
 
 """
-gctx - Global context. No direct writes allowed
+gctx - Global context. No direct writes allowed. Exists during lifetime of program.
 cctx - connection context. Think before writing. Multiple commands may exec parallel.
-lctx - Local context. Write at will.
+       Exist during lifetime of connection.
+lctx - Local context. Write at will. Exist until command has been handled.
 """
 
 
@@ -48,10 +49,16 @@ async def last_resort(gctx, cctx, lctx):
     lctx.writeln("UNHANDLED INPUT. HINT: type help")
     log.warning("UNHANDLED INPUT '{}'".format(lctx.argv))
 
+@nargs(2)
 async def sleep(gctx, cctx, lctx):
-    log.info("sleeping")
-    await asyncio.sleep(3)
-    log.info("waking")
+    """Test async functionality"""
+    try:
+        t = int(lctx.argv[1])
+    except ValueError:
+        t = 0
+    lctx.writeln("sleeping for {} seconds".format(t))
+    await asyncio.sleep(t)
+    lctx.writeln("waking")
 
 async def lsdir(dirname):
     try:
@@ -90,6 +97,20 @@ async def dumpconfig(gctx, cctx, lctx):
         for key, value in section.items():
             lctx.writeln("{} = {}".format(key, value))
         lctx.writeln("")
+
+async def dumpgctx(gctx, cctx, lctx):
+    """DEBUG List global context"""
+    for k,v in gctx.items():
+        lctx.writeln("{}: {}".format(k, v))
+
+async def dumpcctx(gctx, cctx, lctx):
+    """DEBUG List connection context"""
+    for k,v in cctx.items():
+        lctx.writeln("{}: {}".format(k, v))
+
+async def dumplctx(gctx, cctx, lctx):
+    """DEBUG List local context"""
+    lctx.writeln("{}".format(lctx))
 
 @nargs(2)
 @parse_device
@@ -184,4 +205,6 @@ async def loglevel(gctx, cctx, lctx):
         return
     rootlogger.setLevel(level)
 
-handlers = [sleep, quit, shutdown, reboot, help, status, connect, disconnect, devlist, loglevel, stat, gcode, dumpconfig, load, start]
+handlers = [connect, disconnect, status, load, quit, shutdown, reboot, help, 
+    devlist, loglevel, stat, gcode,
+    start, dumpconfig, dumpgctx, dumpcctx, dumplctx, sleep]

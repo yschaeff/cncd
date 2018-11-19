@@ -57,7 +57,12 @@ class SocketHandler(asyncio.Protocol):
         lines = data.split('\n')
         for line in lines:
             self.uid += 1
-            argv = shlex.split(line)
+            try:
+                argv = shlex.split(line)
+            except ValueError:
+                self.cctx['transport'].write("You talk nonsense! HUP!\n".encode())
+                self.cctx['transport'].close()
+                continue
             log.debug(argv)
             if not argv:
                 continue
@@ -82,7 +87,6 @@ class SocketHandler(asyncio.Protocol):
                 self.cctx['transport'].write("{} {}".format(nonce, line).encode())
             Lctx = namedtuple("Lctx", "nonce writeln argv")
             lctx = Lctx(nonce, writeln, argv)
-            log.debug("gctx {} cctx {} lctx {}".format(self.gctx, self.cctx, lctx))
             task = asyncio.ensure_future(cb(self.gctx, self.cctx, lctx))
             task.add_done_callback(functools.partial(done_cb, self.gctx, self.cctx, lctx))
 
