@@ -120,7 +120,10 @@ while True:
     ##UNIX
     coro = loop.create_unix_server(functools.partial(SocketHandler, CTX),
             path=general["unix_socket"])
-    server = loop.run_until_complete(coro)
+    try:
+        server = loop.run_until_complete(coro)
+    except FileNotFoundError:
+        log.error("Socket file {} not accessible.".format(general["unix_socket"]))
     CTX['srv'].append(server)
     log.info('Serving on {}'.format(server.sockets[0].getsockname()))
 

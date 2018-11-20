@@ -157,6 +157,15 @@ async def start(gctx, cctx, lctx, dev):
     else:
         lctx.writeln("ERROR")
 
+@nargs(2)
+@parse_device
+async def stop(gctx, cctx, lctx, dev):
+    """stop executing gcode"""
+    if await dev.stop():
+        lctx.writeln("OK")
+    else:
+        lctx.writeln("ERROR")
+
 @nargs(3)
 @parse_device
 async def gcode(gctx, cctx, lctx, dev):
@@ -207,4 +216,4 @@ async def loglevel(gctx, cctx, lctx):
 
 handlers = [connect, disconnect, status, load, quit, shutdown, reboot, help, 
     devlist, loglevel, stat, gcode,
-    start, dumpconfig, dumpgctx, dumpcctx, dumplctx, sleep]
+    start, stop, dumpconfig, dumpgctx, dumpcctx, dumplctx, sleep]

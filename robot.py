@@ -4,8 +4,8 @@ import serial
 import serial_asyncio
 
 
-class SerialHandler(asyncio.Protocol):
-    """Impements protocol"""
+class SerialConnection(asyncio.Protocol):
+    """Implements protocol"""
     def __init__(self, device):
         self.device = device
         device.handler = self
@@ -48,7 +48,7 @@ class Device():
         self.gcodefile = None
         self.handler = None
         self.input_buffer = b''
-
+        self.gcode_task = None
 
     def rx(self, data):
         self.input_buffer += data
@@ -57,7 +57,7 @@ class Device():
             if index < 0: break
             line  = self.input_buffer[:index+1]
             self.input_buffer = self.input_buffer[index+1:]
-            log.info("RX: {}".format(line))
+            log.debug("robot says '{}'".format(line.decode().strip()))
             if line.decode().strip() == 'ok':
                 self.response_event.set()
             elif line.decode().strip() == 'ERROR':
@@ -101,7 +101,7 @@ class Device():
         self.response_event = asyncio.Event()
         self.success = False
         loop = asyncio.get_event_loop()
-        coro = serial_asyncio.create_serial_connection(loop, functools.partial(SerialHandler, self),
+        coro = serial_asyncio.create_serial_connection(loop, functools.partial(SerialConnection, self),
                 self.cfg["port"], baudrate=self.cfg["baud"])
         task = asyncio.ensure_future(coro)
         task.add_done_callback(functools.partial(done_cb, event, self))
@@ -123,25 +123,32 @@ class Device():
     def load_file(self, filename):
         self.gcodefile = filename
         return True
-    async def start(self): ## rename print file?
-        if not self.gcodefile: return False ## emit warning
-        if not self.handler: return False
 
-        await asyncio.sleep(1)
-
+    async def replay_gcode(self):
         with open(self.gcodefile) as fd:
             for line in fd:
                 idx = line.rfind(';')
                 if idx>=0: line = line[:idx]
-                gcode = line.strip() + '\n'
-                print(gcode)
-                self.handler.transport.write(gcode.encode())
+                gcode = line.strip()
+                if not gcode: continue
+                log.debug("simon says '{}'".format(gcode))
+                self.handler.transport.write((gcode+'\n').encode())
                 ## wait for response
                 await self.response_event.wait()
                 self.response_event.clear()
+
+    async def start(self): ## rename print file?
+        if not self.gcodefile: return False ## emit warning
+        if not self.handler: return False
+        #await asyncio.sleep(1) # make sure printer is done with init msgs
+        self.gcode_task = asyncio.ensure_future(self.replay_gcode())
         return True
+
     def pause(self):
         pass
-    def stop(self):
-        pass
+
+    async def stop(self):
+        if self.gcode_task:
+            self.gcode_task.cancel()
+        return True
 
