@@ -36,6 +36,7 @@ class SocketHandler(asyncio.Protocol):
         self.cctx = {}
         self.uid = 0
         log.debug("instantiating new connection")
+        self.data = ""
     def connection_made(self, transport):
         self.cctx['transport'] = transport
         prop = ['peername','sockname'][transport.get_extra_info('socket').family == socket.AF_UNIX]
@@ -48,47 +49,54 @@ class SocketHandler(asyncio.Protocol):
         log.debug("Received EOF")
         return False
 
+    def command(self, line):
+        self.uid += 1
+        try:
+            argv = shlex.split(line)
+        except ValueError:
+            self.cctx['transport'].write("You talk nonsense! HUP!\n".encode())
+            self.cctx['transport'].close()
+            return
+        log.debug(argv)
+        if not argv:
+            return
+        try:
+            nonce = int(argv[0])
+            argv = argv[1:]
+        except ValueError:
+            nonce = self.uid
+        cmd_handlers = [h for h in self.gctx['hdl'] if h.handles(argv)]
+        # if we have multiple we must have an exact match
+        exact = (len(cmd_handlers) != 1)
+        for handler in cmd_handlers:
+            if not handler.handles(argv, exact): continue
+            cb = handler.cb
+            break
+        else:
+            cb = handlers.last_resort
+        ## we have a handler, construct a local context
+        def writeln(msg):
+            log.debug("Sending '{}'".format(msg))
+            line = str(msg) + '\n'
+            self.cctx['transport'].write("{} {}".format(nonce, line).encode())
+        Lctx = namedtuple("Lctx", "nonce writeln argv")
+        lctx = Lctx(nonce, writeln, argv)
+        task = asyncio.ensure_future(cb(self.gctx, self.cctx, lctx))
+        task.add_done_callback(functools.partial(done_cb, self.gctx, self.cctx, lctx))
+
     def data_received(self, raw):
         try:
-            data = raw.decode().strip()
+            self.data += raw.decode()
         except UnicodeDecodeError:
             log.warning("I can't decode '{}' as unicode".format(raw))
+            self.data = ""
             return
-        lines = data.split('\n')
-        for line in lines:
-            self.uid += 1
-            try:
-                argv = shlex.split(line)
-            except ValueError:
-                self.cctx['transport'].write("You talk nonsense! HUP!\n".encode())
-                self.cctx['transport'].close()
-                continue
-            log.debug(argv)
-            if not argv:
-                continue
-            try:
-                nonce = int(argv[0])
-                argv = argv[1:]
-            except ValueError:
-                nonce = self.uid
-            cmd_handlers = [h for h in self.gctx['hdl'] if h.handles(argv)]
-            # if we have multiple we must have an exact match
-            exact = (len(cmd_handlers) != 1)
-            for handler in cmd_handlers:
-                if not handler.handles(argv, exact): continue
-                cb = handler.cb
-                break
-            else:
-                cb = handlers.last_resort
-            ## we have a handler, construct a local context
-            def writeln(msg):
-                log.debug("Sending '{}'".format(msg))
-                line = str(msg) + '\n'
-                self.cctx['transport'].write("{} {}".format(nonce, line).encode())
-            Lctx = namedtuple("Lctx", "nonce writeln argv")
-            lctx = Lctx(nonce, writeln, argv)
-            task = asyncio.ensure_future(cb(self.gctx, self.cctx, lctx))
-            task.add_done_callback(functools.partial(done_cb, self.gctx, self.cctx, lctx))
+        while True:
+            idx = self.data.find('\n')
+            if idx < 0: break
+            line = self.data[:idx+1]
+            self.data = self.data[idx+1:]
+            self.command(line)
 
 if not os.geteuid():
     log.fatal('Thou Shalt Not Run As Root.')
