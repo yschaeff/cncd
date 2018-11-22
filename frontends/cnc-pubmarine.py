@@ -16,9 +16,12 @@ class Display:
         self.pubpen.subscribe('typed', self.show_typing)
 
     async def get_ch(self):
+        curses.halfdelay(1)
         while True:
             future = self.pubpen.loop.run_in_executor(None, self.stdscr.getch)
-            char = chr(await future)
+            r = await future
+            if r == -1: continue
+            char = chr(r)
             self.pubpen.publish('typed', char)
     def show_message(self, message, user):
         print(message, user)
@@ -40,7 +43,6 @@ class TalkProtocol(asyncio.Protocol):
         self.pubpen.publish('error', exc)
     def connection_lost(self, exc):
         self.pubpen.publish('conn_lost', exc)
-        self.pubpen.loop.stop()
 
 def mainloop(loop, pubpen, stdscr):
     display = Display(pubpen, stdscr)
@@ -48,17 +50,12 @@ def mainloop(loop, pubpen, stdscr):
     try:
         loop.run_forever()
     except KeyboardInterrupt:
-        #task.cancel()
-        print("oh noes")
+        log.debug("kb intr")
+    log.debug("done")
 
     pending = asyncio.Task.all_tasks()
     for task in pending: task.cancel()
-    #try:
     loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
-    #except Exception as e:
-        #print("err")
-    ##finally:
-    #loop.close()
 
 def main():
     loop = asyncio.get_event_loop()
@@ -73,7 +70,9 @@ def main():
         return
     curses.wrapper(partial(mainloop, loop, pubpen))
     transport.close()
-    loop.stop()
 
 if __name__ == '__main__':
+    log.basicConfig(filename='example.log',level=log.DEBUG)
     main()
+
+#TODO make status bar, remove logging
