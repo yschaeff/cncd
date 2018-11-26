@@ -53,11 +53,10 @@ class Logic():
         self.protocol = None
         self.display = None
     async def init(self):
-        self.protocol.send_message("devlist", self.recv_devlist)
-
-    def recv_devlist(self, lines):
-        for line in lines:
-            self.display.status(line)
+        def recv_devlist(lines):
+            for line in lines:
+                self.display.status(line)
+        self.protocol.send_message("devlist", recv_devlist)
 
     def receive(self, data):
         self.display.status(data)
@@ -65,11 +64,9 @@ class Logic():
         if char == 'q':
             loop = asyncio.get_event_loop()
             loop.stop()
-
-        #self.protocol.send_message(chr(char))
         pass
 
-class TalkProtocol(asyncio.Protocol):
+class CncProtocol(asyncio.Protocol):
     def __init__(self, logic):
         self.logic = logic
         logic.protocol = self
@@ -139,7 +136,7 @@ def cleanup_term(stdscr):
 def main(loop):
     logic = Logic()
 
-    future = loop.create_unix_connection(partial(TalkProtocol, logic), PATH)
+    future = loop.create_unix_connection(partial(CncProtocol, logic), PATH)
     try:
         transport, protocol = loop.run_until_complete(future)
     except ConnectionRefusedError as e:
