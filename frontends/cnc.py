@@ -1,65 +1,48 @@
 #!/usr/bin/python3
 
 import asyncio, concurrent
-import curses
+import urwid
 from functools import partial
 import logging as log
 
 PATH = '../.cncd.sock'
 
-class Display:
-    def __init__(self, logic, stdscr):
-        self.stdscr = stdscr
-        self.logic = logic
-        logic.display = self
+def item_chosen(button, choice):
+    return
+    global screen
+    response = urwid.Text([u'You chose ', choice, u'\n'])
+    done = urwid.Button(u'Ok')
+    urwid.connect_signal(done, 'click', exit_program)
+    screen.original_widget = urwid.Filler(urwid.Pile([response,
+        urwid.AttrMap(done, None, focus_map='reversed')]))
 
-    async def get_ch(self, queue):
-        curses.halfdelay(1)
-        while True:
-            loop = asyncio.get_event_loop()
-            future = loop.run_in_executor(None, self.stdscr.getch)
-            char = await future
-            if char == -1: continue
-            await queue.put(char)
-
-    async def rcv_ch(self, queue):
-        while True:
-            char = await queue.get()
-            self.status(f"recv char, {char}")
-            if char == curses.KEY_RESIZE:
-                self.resize()
-            else:
-                self.logic.keystroke(chr(char))
-
-    def show_message(self, message, user):
-        self.status(message)
-
-    def status(self, msg):
-        y, x = self.stdscr.getmaxyx()
-        try:
-            self.stdscr.addstr(y-1, 0, msg[:x-1])
-        except:
-            pass
-        self.stdscr.refresh()
-
-    def resize(self):
-        y, x = self.stdscr.getmaxyx()
-        self.stdscr.clear()
-        self.stdscr.refresh()
-        self.status(f"Resized to {y},{x}")
+def menu(title, choices):
+    body = [urwid.Text(title), urwid.Divider()]
+    for c in choices:
+        button = urwid.Button(c)
+        urwid.connect_signal(button, 'click', item_chosen, c)
+        body.append(urwid.AttrMap(button, None, focus_map='reversed'))
+    return urwid.ListBox(urwid.SimpleFocusListWalker(body))
 
 class Logic():
-    def __init__(self):
+    def __init__(self, screen):
         self.protocol = None
-        self.display = None
-    async def init(self):
+        self.screen = screen
+    def init(self):
         def recv_devlist(lines):
-            for line in lines:
-                self.display.status(line)
+            #make list
+            raise Exception
+            body = [urwid.Text("devices"), urwid.Divider()]
+            for l in lines:
+                button = urwid.Button(l)
+                urwid.connect_signal(button, 'click', item_chosen, l)
+                body.append(urwid.AttrMap(button, None, focus_map='reversed'))
+            self.screen.original_widget = urwid.ListBox(urwid.SimpleFocusListWalker(body))
         self.protocol.send_message("devlist", recv_devlist)
 
     def receive(self, data):
-        self.display.status(data)
+        #self.display.status(data)
+        pass
     def keystroke(self, char):
         if char == 'q':
             loop = asyncio.get_event_loop()
@@ -67,8 +50,9 @@ class Logic():
         pass
 
 class CncProtocol(asyncio.Protocol):
-    def __init__(self, logic):
+    def __init__(self, logic, con_cb):
         self.logic = logic
+        self.con_cb = con_cb
         logic.protocol = self
         self.waiters = {}
         self.nonce = 1
@@ -78,7 +62,9 @@ class CncProtocol(asyncio.Protocol):
         self.waiters[self.nonce] = (response_handler, [])
         self.nonce += 1
     def connection_made(self, transport):
+        ##start interface
         self.transport = transport
+        self.con_cb()
     def data_received(self, data):
         ## accumulate data
         self.data += data.decode()
@@ -109,9 +95,10 @@ class CncProtocol(asyncio.Protocol):
     def error_received(self, exc):
         pass
     def connection_lost(self, exc):
-        pass
+        loop = asyncio.get_event_loop()
+        loop.stop()
 
-def done(cleanfunc, future):
+def done(future):
     try:
         r = future.result()
     except concurrent.futures._base.CancelledError:
@@ -119,39 +106,31 @@ def done(cleanfunc, future):
     except Exception as e:
         loop = asyncio.get_event_loop()
         loop.stop()
-        cleanfunc()
         print("err", e)
 
-def setup_term():
-    stdscr = curses.initscr()
-    curses.noecho()
-    curses.cbreak()
-    return stdscr
-def cleanup_term(stdscr):
-    curses.nocbreak()
-    stdscr.keypad(False)
-    curses.echo()
-    curses.endwin()
+def exit_program(button):
+    loop = asyncio.get_event_loop()
+    loop.stop()
 
 def main(loop):
-    logic = Logic()
+    global screen
+    tt = urwid.Filler(urwid.Text('Waiting for device list.'), 'top')
+    screen = urwid.Overlay(tt, urwid.SolidFill(u'\N{MEDIUM SHADE}'),
+        align='center', width=('relative', 80),
+        valign='middle', height=('relative', 60),
+        min_width=20, min_height=9)
+    evl = urwid.AsyncioEventLoop(loop=asyncio.get_event_loop())
+    urwid_loop = urwid.MainLoop(screen, event_loop=evl)
+    urwid_loop.start()
 
-    future = loop.create_unix_connection(partial(CncProtocol, logic), PATH)
+    logic = Logic(screen)
+
+    future = loop.create_unix_connection(partial(CncProtocol, logic, logic.init), PATH)
     try:
         transport, protocol = loop.run_until_complete(future)
     except ConnectionRefusedError as e:
         log.fatal("Unable to set up connection")
         return
-
-    stdscr = setup_term()
-    display = Display(logic, stdscr)
-    queue = asyncio.Queue()
-    task = asyncio.ensure_future(display.get_ch(queue))
-    task.add_done_callback(partial(done, partial(cleanup_term, stdscr)))
-    task = asyncio.ensure_future(display.rcv_ch(queue))
-    task.add_done_callback(partial(done, partial(cleanup_term, stdscr)))
-    task = asyncio.ensure_future(logic.init())
-    task.add_done_callback(partial(done, partial(cleanup_term, stdscr)))
 
     try:
         loop.run_forever()
@@ -159,7 +138,7 @@ def main(loop):
         pass
 
     ## first clean up curses
-    cleanup_term(stdscr)
+    urwid_loop.stop()
     log.debug("terminating")
     #then retrieve exceptions
     transport.close()
@@ -172,6 +151,3 @@ if __name__ == '__main__':
     loop = asyncio.get_event_loop()
     main(loop)
     loop.close()
-
-#TODO make status bar, remove logging
-#sock from cmdline
