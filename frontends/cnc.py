@@ -65,6 +65,11 @@ class Controller():
             gui_cb(lines)
         self.protocol.send_message(f"status \"{device}\"", controller_cb)
 
+    def get_filelist(self, gui_cb, device):
+        def controller_cb(lines):
+            gui_cb(lines)
+        self.protocol.send_message(f"stat", controller_cb)
+
 def main(loop):
     future = loop.create_unix_connection(partial(CncProtocol), PATH)
     try:

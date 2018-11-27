@@ -46,7 +46,7 @@ async def last_resort(gctx, cctx, lctx):
         lctx.writeln("closing for you")
         cctx['transport'].close()
         return
-    lctx.writeln("UNHANDLED INPUT. HINT: type help")
+    lctx.writeln("ERROR UNHANDLED INPUT. HINT: type help")
     log.warning("UNHANDLED INPUT '{}'".format(lctx.argv))
 
 @nargs(2)

@@ -2,7 +2,7 @@
 
 import urwid
 from urwid import Frame, Text, Filler, AttrMap, ListBox, Divider, SimpleFocusListWalker,\
-    Button
+    Button, WidgetWrap, Pile
 from functools import partial
 import logging as log
 
@@ -18,14 +18,61 @@ def initframe(header, footer):
     body = Filler(Text('Waiting for device list.'), 'top')
     return baseframe(body, header, footer)
 
+class InputPile(urwid.WidgetWrap):
+    def __init__(self, keypress, widget_list, focus_item=None):
+        pile = Pile(widget_list, focus_item)
+        urwid.WidgetWrap.__init__(self, pile)
+        self.alt_keypress = keypress
+    def keypress(self, size, key):
+        if self.alt_keypress(size, key):
+            return True
+        else:
+            return super().keypress(size, key)
+
 class Tui():
+    def error_filter(self, lines):
+        for line in lines:
+            if line.startswith("ERROR"):
+                self.footer.set_text(f"server: {line.strip()}")
+            else:
+                yield line
+
+    def statframe(self, device):
+        def keypress(size, key):
+            if key == 'l':
+                return True
+            return False
+
+        #def button_cb(button, device):
+            # go to device view
+            #self.windowstack.append(self.mainloop.widget)
+            #self.mainloop.widget = initframe(self.header, self.footer)
+        widgets = [Text(f"Select file to loead on \"{device}\""), Divider()]
+        walker = SimpleFocusListWalker(widgets)
+        def devlist_cb(lines):
+            for line in self.error_filter(lines):
+                filename = line.strip()
+                button = Button(filename)
+                #urwid.connect_signal(button, 'click', button_cb, device)
+                walker.append(AttrMap(button, None, focus_map='selected'))
+        self.controller.get_filelist(devlist_cb, device)
+        body = InputPile(keypress, [ListBox(walker)])
+        return baseframe(body, self.header, self.footer)
+
     def devframe(self, device):
-        def button_cb(button, device):
-            ## go to device view
-            self.windowstack.append(self.mainloop.widget)
-            self.mainloop.widget = initframe(self.header, self.footer)
-        body = [Text(f"Selected device \"{device}\""), Divider()]
-        walker = SimpleFocusListWalker(body)
+        def keypress(size, key):
+            if key == 'l':
+                self.windowstack.append(self.mainloop.widget)
+                self.mainloop.widget = self.statframe(device)
+                return True
+            return False
+
+        #def button_cb(button, device):
+            ### go to device view
+            #self.windowstack.append(self.mainloop.widget)
+            #self.mainloop.widget = statframe(device)
+        widgets = [Text(f"Selected device \"{device}\""), Divider()]
+        walker = SimpleFocusListWalker(widgets)
         def devlist_cb(lines):
             for line in lines:
                 device = line.strip()
@@ -35,16 +82,16 @@ class Tui():
         self.controller.get_status(devlist_cb, device)
         button = Button("File selected:")
         walker.append(button)
-        box = ListBox(walker)
-        return baseframe(box, self.header, self.footer)
+        body = InputPile(keypress, [ListBox(walker)])
+        return baseframe(body, self.header, self.footer)
 
     def devlistframe(self):
         def button_cb(button, device):
             ## go to device view
             self.windowstack.append(self.mainloop.widget)
             self.mainloop.widget = self.devframe(device)
-        body = [Text("Available CNC Devices"), Divider()]
-        walker = SimpleFocusListWalker(body)
+        widgets = [Text("Available CNC Devices"), Divider()]
+        walker = SimpleFocusListWalker(widgets)
         def devlist_cb(lines):
             for line in lines:
                 device = line.strip()
@@ -52,8 +99,8 @@ class Tui():
                 urwid.connect_signal(button, 'click', button_cb, device)
                 walker.append(AttrMap(button, None, focus_map='selected'))
         self.controller.get_devlist(devlist_cb)
-        box = ListBox(walker)
-        return baseframe(box, self.header, self.footer)
+        body = ListBox(walker)
+        return baseframe(body, self.header, self.footer)
 
     def __init__(self, asyncio_loop, controller):
         urwid.command_map['j'] = 'cursor down'
