@@ -51,6 +51,20 @@ class CncProtocol(asyncio.Protocol):
         loop = asyncio.get_event_loop()
         loop.stop()
 
+class Controller():
+    def __init__(self, protocol):
+        self.protocol = protocol
+
+    def get_devlist(self, gui_cb):
+        def controller_cb(lines):
+            gui_cb(lines)
+        self.protocol.send_message("devlist", controller_cb)
+
+    def get_status(self, gui_cb, device):
+        def controller_cb(lines):
+            gui_cb(lines)
+        self.protocol.send_message(f"status \"{device}\"", controller_cb)
+
 def main(loop):
     future = loop.create_unix_connection(partial(CncProtocol), PATH)
     try:
@@ -59,7 +73,9 @@ def main(loop):
         log.fatal("Unable to set up connection")
         return
 
-    with tui.Tui(loop) as utui:
+    controller = Controller(protocol)
+
+    with tui.Tui(loop, controller) as utui:
         try:
             loop.run_forever()
         except KeyboardInterrupt:
