@@ -1,6 +1,5 @@
 #!/usr/bin/python3
 
-import asyncio, concurrent
 import urwid
 from urwid import Frame, Text, Filler, AttrMap, ListBox, Divider, SimpleFocusListWalker,\
     Button
@@ -40,7 +39,7 @@ class Tui():
         window = devlistframe(self.header, self.footer)
 
         self.asyncio_loop = asyncio_loop
-        evl = urwid.AsyncioEventLoop(loop=asyncio.get_event_loop())
+        evl = urwid.AsyncioEventLoop(loop=asyncio_loop)
         self.mainloop = urwid.MainLoop(window, palette, unhandled_input=self._unhandled_input, event_loop=evl)
     def _unhandled_input(self, key):
         if key == 'q':
@@ -55,20 +54,3 @@ class Tui():
         """Restore terminal and allow exceptions"""
         self.mainloop.stop()
         return False
-
-def main(loop):
-    with Tui(loop) as tui:
-        try:
-            loop.run_forever()
-        except KeyboardInterrupt:
-            pass
-    log.debug("terminating")
-    pending = asyncio.Task.all_tasks()
-    for task in pending: task.cancel()
-    loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
-
-if __name__ == '__main__':
-    log.basicConfig(level=log.DEBUG)
-    loop = asyncio.get_event_loop()
-    main(loop)
-    loop.close()
