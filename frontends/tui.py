@@ -2,7 +2,8 @@
 
 import asyncio, concurrent
 import urwid
-from urwid import Frame, Text, Filler, AttrMap
+from urwid import Frame, Text, Filler, AttrMap, ListBox, Divider, SimpleFocusListWalker,\
+    Button
 from functools import partial
 import logging as log
 
@@ -13,12 +14,30 @@ def baseframe(body, header, footer):
             AttrMap(header, 'status'),
             AttrMap(footer, 'status'), 'body')
 
+def initframe(header, footer):
+    body = Filler(Text('Waiting for device list.'), 'top')
+    return baseframe(body, header, footer)
+
+def devlistframe(header, footer):
+    def cb(button, device):
+        ## go to device view
+        pass
+    body = [Text("Available CNC Devices"), Divider()]
+    devices = []#["a", "b", "c"]
+    for device in devices:
+        button = Button(device)
+        urwid.connect_signal(button, 'click', cb, device)
+        body.append(AttrMap(button, None, focus_map='reversed'))
+    walker = SimpleFocusListWalker(body)
+    box = ListBox(walker)
+    return baseframe(box, header, footer)
+
 class Tui():
     def __init__(self, asyncio_loop):
         self.header = Text("Show help here.")
         self.footer = Text("status")
-        txt = Filler(Text('Waiting for device list.'), 'top')
-        window = baseframe(txt, self.header, self.footer)
+        #window = initframe(self.header, self.footer)
+        window = devlistframe(self.header, self.footer)
 
         self.asyncio_loop = asyncio_loop
         evl = urwid.AsyncioEventLoop(loop=asyncio.get_event_loop())
