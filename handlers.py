@@ -66,6 +66,9 @@ async def lsdir(dirname):
     except FileNotFoundError:
         log.critical("Path doesn't exists")
         return []
+    except PermissionError as e:
+        log.error(f"No permission to list dir. {e}")
+        return []
     files = []
     for fn in objects:
         full = "{}/{}".format(dirname, fn)

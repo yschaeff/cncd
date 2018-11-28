@@ -30,78 +30,6 @@ class InputPile(urwid.WidgetWrap):
             return super().keypress(size, key)
 
 class Tui():
-    def error_filter(self, lines):
-        for line in lines:
-            if line.startswith("ERROR"):
-                self.footer.set_text(f"server: {line.strip()}")
-            else:
-                yield line
-
-    def statframe(self, device):
-        def keypress(size, key):
-            if key == 'l':
-                return True
-            return False
-
-        #def button_cb(button, device):
-            # go to device view
-            #self.windowstack.append(self.mainloop.widget)
-            #self.mainloop.widget = initframe(self.header, self.footer)
-        widgets = [Text(f"Select file to loead on \"{device}\""), Divider()]
-        walker = SimpleFocusListWalker(widgets)
-        def devlist_cb(lines):
-            for line in self.error_filter(lines):
-                filename = line.strip()
-                button = Button(filename)
-                #urwid.connect_signal(button, 'click', button_cb, device)
-                walker.append(AttrMap(button, None, focus_map='selected'))
-        self.controller.get_filelist(devlist_cb, device)
-        body = InputPile(keypress, [ListBox(walker)])
-        return baseframe(body, self.header, self.footer)
-
-    def devframe(self, device):
-        def keypress(size, key):
-            if key == 'l':
-                self.windowstack.append(self.mainloop.widget)
-                self.mainloop.widget = self.statframe(device)
-                return True
-            return False
-
-        #def button_cb(button, device):
-            ### go to device view
-            #self.windowstack.append(self.mainloop.widget)
-            #self.mainloop.widget = statframe(device)
-        widgets = [Text(f"Selected device \"{device}\""), Divider()]
-        walker = SimpleFocusListWalker(widgets)
-        def devlist_cb(lines):
-            for line in lines:
-                device = line.strip()
-                button = Button(device)
-                #urwid.connect_signal(button, 'click', button_cb, device)
-                walker.append(AttrMap(button, None, focus_map='selected'))
-        self.controller.get_status(devlist_cb, device)
-        button = Button("File selected:")
-        walker.append(button)
-        body = InputPile(keypress, [ListBox(walker)])
-        return baseframe(body, self.header, self.footer)
-
-    def devlistframe(self):
-        def button_cb(button, device):
-            ## go to device view
-            self.windowstack.append(self.mainloop.widget)
-            self.mainloop.widget = self.devframe(device)
-        widgets = [Text("Available CNC Devices"), Divider()]
-        walker = SimpleFocusListWalker(widgets)
-        def devlist_cb(lines):
-            for line in lines:
-                device = line.strip()
-                button = Button(device)
-                urwid.connect_signal(button, 'click', button_cb, device)
-                walker.append(AttrMap(button, None, focus_map='selected'))
-        self.controller.get_devlist(devlist_cb)
-        body = ListBox(walker)
-        return baseframe(body, self.header, self.footer)
-
     def __init__(self, asyncio_loop, controller):
         urwid.command_map['j'] = 'cursor down'
         urwid.command_map['k'] = 'cursor up'
@@ -126,7 +54,7 @@ class Tui():
         elif key == 'Q':
             self.asyncio_loop.stop()
         else:
-            self.footer.set_text(f"Pressed key: {key}")
+            self.footer.set_text(f"Unhandled Key Press: {key}")
             return False
         return True
 
@@ -135,5 +63,120 @@ class Tui():
 
     def __exit__(self, exceptiontype, exceptionvalue, traceback):
         """Restore terminal and allow exceptions"""
+        #if exceptiontype:
+        log.critical(f"{exceptiontype}")
+        log.critical(f"{exceptionvalue}")
+        log.critical(f"{traceback}")
         self.mainloop.stop()
         return False
+
+    def error_filter(self, lines):
+        errors = False
+        for line in lines:
+            if line.startswith("ERROR"):
+                self.footer.set_text(f"server: {line.strip()}")
+                errors = True
+            else:
+                yield line
+        if not errors:
+            self.footer.set_text(f"server: OK")
+
+    def statframe(self, device):
+        self.footer.set_text(f"")
+        widgets = [Text(f"Select file to load on \"{device}\""), Divider()]
+        walker = SimpleFocusListWalker(widgets)
+        shortcuts = {}
+
+        def devlist_cb(lines):
+            for line in self.error_filter(lines):
+                filename = line.strip()
+                button = Button(filename)
+                #urwid.connect_signal(button, 'click', button_cb, device)
+                walker.append(AttrMap(button, None, focus_map='selected'))
+            walker.set_focus(2)
+        self.controller.get_filelist(devlist_cb, device)
+
+        def keypress(size, key):
+            if key not in shortcuts:
+                return False ## not handled
+            shortcuts[key]()
+            return True ## handled
+
+        body = InputPile(keypress, [ListBox(walker)])
+        return baseframe(body, self.header, self.footer)
+
+    def devframe(self, device):
+        self.footer.set_text(f"")
+        widgets = [Text(f"Selected device \"{device}\""), Divider()]
+        walker = SimpleFocusListWalker(widgets)
+        shortcuts = {}
+
+        def cmd_cb(lines):
+            ## this seems to do nothing but any errors will be displayed
+            ## in the statusbar
+            for line in self.error_filter(lines): pass
+
+        button = Button("Connect")
+        def button_cb(button, device):
+            self.controller.connect(cmd_cb, device)
+        urwid.connect_signal(button, 'click', button_cb, device)
+        walker.append(AttrMap(button, None, focus_map='selected'))
+        shortcuts['c'] = partial(button_cb, button, device)
+
+        button = Button("Disconnect")
+        def button_cb(button, device):
+            self.controller.disconnect(cmd_cb, device)
+        urwid.connect_signal(button, 'click', button_cb, device)
+        walker.append(AttrMap(button, None, focus_map='selected'))
+        shortcuts['d'] = partial(button_cb, button, device)
+
+        button = Button("Start")
+        def button_cb(button, device):
+            self.controller.start(cmd_cb, device)
+        urwid.connect_signal(button, 'click', button_cb, device)
+        walker.append(AttrMap(button, None, focus_map='selected'))
+        shortcuts['s'] = partial(button_cb, button, device)
+
+        button = Button("Abort")
+        def button_cb(button, device):
+            self.controller.stop(cmd_cb, device)
+        urwid.connect_signal(button, 'click', button_cb, device)
+        walker.append(AttrMap(button, None, focus_map='selected'))
+        shortcuts['a'] = partial(button_cb, button, device)
+
+        button = Button("Load File")
+        def button_cb(button, device):
+            self.windowstack.append(self.mainloop.widget)
+            self.mainloop.widget = self.statframe(device)
+        urwid.connect_signal(button, 'click', button_cb, device)
+        walker.append(AttrMap(button, None, focus_map='selected'))
+        shortcuts['l'] = partial(button_cb, button, device)
+
+        def keypress(size, key):
+            if key not in shortcuts:
+                return False ## not handled
+            shortcuts[key]()
+            return True ## handled
+
+        body = InputPile(keypress, [ListBox(walker)])
+        return baseframe(body, self.header, self.footer)
+
+    def devlistframe(self):
+        """ Displays a list of available devices."""
+        self.footer.set_text(f"")
+        widgets = [Text("Available CNC Devices"), Divider()]
+        walker = SimpleFocusListWalker(widgets)
+        def devlist_cb(lines):
+            def button_cb(button, device):
+                ## go to device view
+                self.windowstack.append(self.mainloop.widget)
+                self.mainloop.widget = self.devframe(device)
+            for line in lines:
+                device = line.strip()
+                button = Button(device)
+                urwid.connect_signal(button, 'click', button_cb, device)
+                walker.append(AttrMap(button, None, focus_map='selected'))
+        self.controller.get_devlist(devlist_cb)
+        body = ListBox(walker)
+        return baseframe(body, self.header, self.footer)
+

@@ -70,6 +70,30 @@ class Controller():
             gui_cb(lines)
         self.protocol.send_message(f"stat", controller_cb)
 
+    def connect(self, gui_cb, device):
+        def controller_cb(lines):
+            if gui_cb:
+                gui_cb(lines)
+        self.protocol.send_message(f"connect \"{device}\"", controller_cb)
+
+    def disconnect(self, gui_cb, device):
+        def controller_cb(lines):
+            if gui_cb:
+                gui_cb(lines)
+        self.protocol.send_message(f"disconnect \"{device}\"", controller_cb)
+
+    def start(self, gui_cb, device):
+        def controller_cb(lines):
+            if gui_cb:
+                gui_cb(lines)
+        self.protocol.send_message(f"start \"{device}\"", controller_cb)
+
+    def stop(self, gui_cb, device):
+        def controller_cb(lines):
+            if gui_cb:
+                gui_cb(lines)
+        self.protocol.send_message(f"stop \"{device}\"", controller_cb)
+
 def main(loop):
     future = loop.create_unix_connection(partial(CncProtocol), PATH)
     try:
