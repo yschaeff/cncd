@@ -3,6 +3,15 @@ import asyncio, functools, concurrent
 import serial
 import serial_asyncio
 
+class DummySerialConnection():
+    def __init__(self, device):
+        self.device = device
+        device.handler = self
+    def close(self):
+        self.device.handler = None
+        log.info("Dummy serial connection closed")
+    def write(self, msg):
+        log.info("Dummy serial connection write")
 
 class SerialConnection(asyncio.Protocol):
     """Implements protocol"""
@@ -36,6 +45,12 @@ class SerialConnection(asyncio.Protocol):
         print(self.transport.get_write_buffer_size())
         print('resume writing')
 
+    def close(self):
+        self.transport.close()
+    def write(self, msg):
+        self.transport.write()
+
+
 class Device():
     """General CNC device, keeps state, buffers etc"""
     def __init__(self, dev_cfg, gctx):
@@ -43,12 +58,12 @@ class Device():
         self.gctx = gctx
         self.con = None
         log.info("Added device \"{}\"".format(self.cfg.name))
-        #log.debug(dir(dev_cfg))
         self.connected = False
         self.gcodefile = None
         self.handler = None
         self.input_buffer = b''
         self.gcode_task = None
+        self.dummy = dev_cfg["port"] == "dummy"
 
     def rx(self, data):
         self.input_buffer += data
@@ -101,11 +116,15 @@ class Device():
         self.response_event = asyncio.Event()
         self.success = False
         loop = asyncio.get_event_loop()
-        coro = serial_asyncio.create_serial_connection(loop, functools.partial(SerialConnection, self),
+        if not self.dummy:
+            coro = serial_asyncio.create_serial_connection(loop, functools.partial(SerialConnection, self),
                 self.cfg["port"], baudrate=self.cfg["baud"])
-        task = asyncio.ensure_future(coro)
-        task.add_done_callback(functools.partial(done_cb, event, self))
-        await event.wait()
+            task = asyncio.ensure_future(coro)
+            task.add_done_callback(functools.partial(done_cb, event, self))
+            await event.wait()
+        else:
+            DummySerialConnection(self)
+            self.success = True
         if self.success:
             log.info("Serial device connected successfully.")
             self.input_buffer = b''
@@ -116,7 +135,7 @@ class Device():
     def disconnect(self):
         if self.handler:
             self.handler.expect_close = True
-            self.handler.transport.close()
+            self.handler.close()
         else:
             log.warning("Requested disconnect. But not connected.")
         return True
@@ -132,13 +151,15 @@ class Device():
                 gcode = line.strip()
                 if not gcode: continue
                 log.debug("simon says '{}'".format(gcode))
-                self.handler.transport.write((gcode+'\n').encode())
+                self.handler.write((gcode+'\n').encode())
                 ## wait for response
                 await self.response_event.wait()
                 self.response_event.clear()
 
     async def start(self): ## rename print file?
-        if not self.gcodefile: return False ## emit warning
+        if not self.gcodefile:
+            log.warning("Asking for start but no gcode file selected.")
+            return False ## emit warning
         if not self.handler: return False
         #await asyncio.sleep(1) # make sure printer is done with init msgs
         self.gcode_task = asyncio.ensure_future(self.replay_gcode())
