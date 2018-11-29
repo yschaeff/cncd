@@ -30,11 +30,14 @@ class InputPile(urwid.WidgetWrap):
             return super().keypress(size, key)
 
 class Tui():
+    def set_header_text(self, txt):
+        self.header.set_text("Q:quit! q:back"+txt)
     def __init__(self, asyncio_loop, controller):
         urwid.command_map['j'] = 'cursor down'
         urwid.command_map['k'] = 'cursor up'
         self.controller = controller
-        self.header = Text("q:quit bcksp:prev")
+        self.header = Text("")
+        self.set_header_text("")
         self.footer = Text("status")
         window = self.devlistframe()
         self.windowstack = []
@@ -79,6 +82,7 @@ class Tui():
 
     def statframe(self, device):
         self.footer.set_text(f"")
+        self.set_header_text("")
         widgets = [Text(f"Select file to load on \"{device}\""), Divider()]
         walker = SimpleFocusListWalker(widgets)
         shortcuts = {}
@@ -124,28 +128,28 @@ class Tui():
             self.controller.connect(cmd_cb, device)
         urwid.connect_signal(button, 'click', button_cb, device)
         walker.append(AttrMap(button, None, focus_map='selected'))
-        shortcuts['c'] = partial(button_cb, button, device)
+        shortcuts['c'] = (partial(button_cb, button, device), "connect")
 
         button = Button("Disconnect")
         def button_cb(button, device):
             self.controller.disconnect(cmd_cb, device)
         urwid.connect_signal(button, 'click', button_cb, device)
         walker.append(AttrMap(button, None, focus_map='selected'))
-        shortcuts['d'] = partial(button_cb, button, device)
+        shortcuts['d'] = (partial(button_cb, button, device), "disconnect")
 
         button = Button("Start")
         def button_cb(button, device):
             self.controller.start(cmd_cb, device)
         urwid.connect_signal(button, 'click', button_cb, device)
         walker.append(AttrMap(button, None, focus_map='selected'))
-        shortcuts['s'] = partial(button_cb, button, device)
+        shortcuts['s'] = (partial(button_cb, button, device), "start")
 
         button = Button("Abort")
         def button_cb(button, device):
             self.controller.stop(cmd_cb, device)
         urwid.connect_signal(button, 'click', button_cb, device)
         walker.append(AttrMap(button, None, focus_map='selected'))
-        shortcuts['a'] = partial(button_cb, button, device)
+        shortcuts['a'] = (partial(button_cb, button, device), "abort")
 
         button = Button("Load File")
         def button_cb(button, device):
@@ -153,20 +157,22 @@ class Tui():
             self.mainloop.widget = self.statframe(device)
         urwid.connect_signal(button, 'click', button_cb, device)
         walker.append(AttrMap(button, None, focus_map='selected'))
-        shortcuts['l'] = partial(button_cb, button, device)
+        shortcuts['l'] = (partial(button_cb, button, device), "load")
 
         def keypress(size, key):
             if key not in shortcuts:
                 return False ## not handled
-            shortcuts[key]()
+            shortcuts[key][1]()
             return True ## handled
 
+        self.set_header_text("".join([f" {k}:{label}" for k,(cb, label) in shortcuts.items()]))
         body = InputPile(keypress, [ListBox(walker)])
         return baseframe(body, self.header, self.footer)
 
     def devlistframe(self):
         """ Displays a list of available devices."""
         self.footer.set_text(f"")
+        self.set_header_text("")
         widgets = [Text("Available CNC Devices"), Divider()]
         walker = SimpleFocusListWalker(widgets)
         def devlist_cb(lines):

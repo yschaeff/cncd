@@ -12,6 +12,10 @@ class DummySerialConnection():
         log.info("Dummy serial connection closed")
     def write(self, msg):
         log.info("Dummy serial connection write")
+        async def slow_ack():
+            await asyncio.sleep(.1)
+            self.device.rx(b'ok\n')
+        task = asyncio.ensure_future(slow_ack())
 
 class SerialConnection(asyncio.Protocol):
     """Implements protocol"""
