@@ -12,6 +12,7 @@ class CncProtocol(asyncio.Protocol):
         self.waiters = {}
         self.nonce = 1
         self.data = ""
+        self.gui_exception = None
     def send_message(self, message, response_handler = None):
         self.transport.write(f"{self.nonce} {message}\n".encode())
         self.waiters[self.nonce] = (response_handler, [])
@@ -41,7 +42,11 @@ class CncProtocol(asyncio.Protocol):
                 continue
             handler, buf = self.waiters[nonce]
             if line.strip() == ".":
-                handler(buf)
+                try:
+                    handler(buf)
+                except Exception as e:
+                    self.gui_exception = e
+                    self.transport.close()
                 self.waiters.pop(nonce)
             else:
                 buf.append(line)
@@ -94,6 +99,12 @@ class Controller():
                 gui_cb(lines)
         self.protocol.send_message(f"stop \"{device}\"", controller_cb)
 
+    def load(self, gui_cb, device, filename):
+        def controller_cb(lines):
+            if gui_cb:
+                gui_cb(lines)
+        self.protocol.send_message(f"load \"{device}\" \"{filename}\"", controller_cb)
+
 def main(loop):
     future = loop.create_unix_connection(partial(CncProtocol), PATH)
     try:
@@ -108,7 +119,11 @@ def main(loop):
         try:
             loop.run_forever()
         except KeyboardInterrupt:
-            pass
+            pass #graceful exit
+
+    if protocol.gui_exception:
+        log.critical("Exception raised in GUI callback function:")
+        raise protocol.gui_exception
     log.debug("terminating")
     transport.close()
     pending = asyncio.Task.all_tasks()

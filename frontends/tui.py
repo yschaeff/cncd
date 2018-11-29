@@ -2,7 +2,7 @@
 
 import urwid
 from urwid import Frame, Text, Filler, AttrMap, ListBox, Divider, SimpleFocusListWalker,\
-    Button, WidgetWrap, Pile
+    Button, WidgetWrap, Pile, ExitMainLoop
 from functools import partial
 import logging as log
 
@@ -63,10 +63,6 @@ class Tui():
 
     def __exit__(self, exceptiontype, exceptionvalue, traceback):
         """Restore terminal and allow exceptions"""
-        #if exceptiontype:
-        log.critical(f"{exceptiontype}")
-        log.critical(f"{exceptionvalue}")
-        log.critical(f"{traceback}")
         self.mainloop.stop()
         return False
 
@@ -87,11 +83,18 @@ class Tui():
         walker = SimpleFocusListWalker(widgets)
         shortcuts = {}
 
+        def load_cb(lines):
+            for line in self.error_filter(lines): pass
+            self.mainloop.widget = self.windowstack.pop()
+
+        def button_cb(device, filename, button):
+            self.controller.load(load_cb, device, filename)
+
         def devlist_cb(lines):
             for line in self.error_filter(lines):
                 filename = line.strip()
                 button = Button(filename)
-                #urwid.connect_signal(button, 'click', button_cb, device)
+                urwid.connect_signal(button, 'click', button_cb, user_args=[device, filename])
                 walker.append(AttrMap(button, None, focus_map='selected'))
             walker.set_focus(2)
         self.controller.get_filelist(devlist_cb, device)
