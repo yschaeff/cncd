@@ -52,7 +52,7 @@ class SerialConnection(asyncio.Protocol):
     def close(self):
         self.transport.close()
     def write(self, msg):
-        self.transport.write()
+        self.transport.write(msg)
 
 
 class Device():
