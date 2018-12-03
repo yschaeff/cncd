@@ -47,20 +47,24 @@ async def last_resort(gctx, cctx, lctx):
         lctx.writeln("closing for you")
         cctx['transport'].close()
         return
+
     plugins = gctx["plugins"]
     for plugin in plugins:
         try:
             handles = plugin.handles_command(lctx.argv[0])
-            if plugin.handles_command(lctx.argv[0]):
-                for line in plugin.handle_command(lctx.argv[0], gctx, cctx, lctx):
-                    lctx.writeln(line)
-                    await asyncio.sleep(0)
-                return #first come first serve, do not allow others to hijack
+            if not handles: continue
+            for line in plugin.handle_command(lctx.argv, gctx, cctx, lctx):
+                transport = cctx['transport']
+                if transport .is_closing(): return
+                lctx.writeln(line)
+                await asyncio.sleep(0)
+            return #first come first serve, do not allow others to hijack
         except Exception as e:
             log.error("Plugin crashed. Disabling plugin until restart.")
             log.error(traceback.format_exc())
             plugins.remove(plugin)
             return
+
     lctx.writeln("ERROR UNHANDLED INPUT. HINT: type help")
     log.warning("UNHANDLED INPUT '{}'".format(lctx.argv))
 

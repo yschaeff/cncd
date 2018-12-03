@@ -5,6 +5,7 @@ import logging as log
 import asyncio, functools, concurrent
 import shlex ##shell lexer
 import handlers, robot, serial
+from pluginmanager import PluginManager
 import serial_asyncio
 import os, socket, traceback
 
@@ -98,37 +99,6 @@ class SocketHandler(asyncio.Protocol):
             self.data = self.data[idx+1:]
             self.command(line)
 
-def load_plugins(gctx):
-    general = gctx['cfg']["general"]
-    plugin_path = general["plugin_path"]
-    plugins_enabled = general["plugins_enabled"]
-    gctx["plugins"] = []
-    import importlib.util
-
-    names = plugins_enabled.split(',')
-    paths = [f"{plugin_path}/{name}.py" for name in names]
-    for path in paths:
-        spec = importlib.util.spec_from_file_location("module.name", path)
-        plugin = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(plugin)
-        log.info(f"Loading plugin {path}")
-        try:
-            instance = plugin.Plugin()
-        except Exception as e:
-            log.error("Plugin crashed during loading. Not activated.")
-            log.error(traceback.format_exc())
-            continue
-        gctx["plugins"].append(instance)
-
-def unload_plugins(gctx):
-    for plugin in gctx["plugins"]:
-        try:
-            plugin.close()
-        except Exception as e:
-            log.error("Plugin crashed during unloading")
-            log.error(traceback.format_exc())
-    gctx["plugins"] = []
-
 if not os.geteuid():
     log.fatal('Thou Shalt Not Run As Root.')
     exit(1)
@@ -148,7 +118,10 @@ while True:
         gctx['dev'][name] = robot.Device(gctx['cfg'][name], gctx)
 
     general = gctx['cfg']["general"]
-    load_plugins(gctx)
+
+    pluginmanager = PluginManager(gctx)
+    gctx['pluginmanager'] = pluginmanager
+    pluginmanager.load_plugins()
 
     ##TCP
     coro = loop.create_server(functools.partial(SocketHandler, gctx),
@@ -178,7 +151,7 @@ while True:
             log.debug("shutting down service")
             server.close()
             loop.run_until_complete(server.wait_closed())
-    unload_plugins(gctx)
+    pluginmanager.unload_plugins()
     if not gctx['reboot']: break
 
 pending = asyncio.Task.all_tasks()
