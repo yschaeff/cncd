@@ -6,7 +6,7 @@ import asyncio, functools, concurrent
 import shlex ##shell lexer
 import handlers, robot, serial
 import serial_asyncio
-import os, socket
+import os, socket, traceback
 
 class Handler:
     def __init__(self, cb):
@@ -112,7 +112,22 @@ def load_plugins(gctx):
         plugin = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(plugin)
         log.info(f"Loading plugin {path}")
-        gctx["plugins"].append(plugin.Plugin())
+        try:
+            instance = plugin.Plugin()
+        except Exception as e:
+            log.error("Plugin crashed during loading. Not activated.")
+            log.error(traceback.format_exc())
+            continue
+        gctx["plugins"].append(instance)
+
+def unload_plugins(gctx):
+    for plugin in gctx["plugins"]:
+        try:
+            plugin.close()
+        except Exception as e:
+            log.error("Plugin crashed during unloading")
+            log.error(traceback.format_exc())
+    gctx["plugins"] = []
 
 if not os.geteuid():
     log.fatal('Thou Shalt Not Run As Root.')
@@ -163,6 +178,7 @@ while True:
             log.debug("shutting down service")
             server.close()
             loop.run_until_complete(server.wait_closed())
+    unload_plugins(gctx)
     if not gctx['reboot']: break
 
 pending = asyncio.Task.all_tasks()
