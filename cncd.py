@@ -30,9 +30,9 @@ def done_cb(gctx, cctx, lctx, future):
     lctx.writeln('.')
 
 class SocketHandler(asyncio.Protocol):
-    def __init__(self, ctx):
+    def __init__(self, gctx):
         super().__init__()
-        self.gctx = ctx
+        self.gctx = gctx
         self.cctx = {}
         self.uid = 0
         log.debug("instantiating new connection")
@@ -98,41 +98,58 @@ class SocketHandler(asyncio.Protocol):
             self.data = self.data[idx+1:]
             self.command(line)
 
+def load_plugins(gctx):
+    general = gctx['cfg']["general"]
+    plugin_path = general["plugin_path"]
+    plugins_enabled = general["plugins_enabled"]
+    gctx["plugins"] = []
+    import importlib.util
+
+    names = plugins_enabled.split(',')
+    paths = [f"{plugin_path}/{name}.py" for name in names]
+    for path in paths:
+        spec = importlib.util.spec_from_file_location("module.name", path)
+        plugin = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(plugin)
+        log.info(f"Loading plugin {path}")
+        gctx["plugins"].append(plugin.Plugin())
+
 if not os.geteuid():
     log.fatal('Thou Shalt Not Run As Root.')
     exit(1)
 
 loop = asyncio.get_event_loop()
-CTX = {}
+gctx = {}
 while True:
     # this will take care of config file, defaults commandline arguments and
     # setting log levels
-    CTX['cfg'] = load_configuration()
-    CTX['hdl'] = [Handler(name) for name in handlers.handlers]
-    CTX['srv'] = []
-    CTX['reboot'] = False
-    CTX['dev'] = {}
-    for name in CTX['cfg'].sections():
+    gctx['cfg'] = load_configuration()
+    gctx['hdl'] = [Handler(name) for name in handlers.handlers]
+    gctx['srv'] = []
+    gctx['reboot'] = False
+    gctx['dev'] = {}
+    for name in gctx['cfg'].sections():
         if name == "general": continue
-        CTX['dev'][name] = robot.Device(CTX['cfg'][name], CTX)
+        gctx['dev'][name] = robot.Device(gctx['cfg'][name], gctx)
 
-    general = CTX['cfg']["general"]
+    general = gctx['cfg']["general"]
+    load_plugins(gctx)
 
     ##TCP
-    coro = loop.create_server(functools.partial(SocketHandler, CTX),
+    coro = loop.create_server(functools.partial(SocketHandler, gctx),
             general["address"], general["port"])
     server = loop.run_until_complete(coro)
-    CTX['srv'].append(server)
+    gctx['srv'].append(server)
     log.info('Serving on {}'.format(server.sockets[0].getsockname()))
 
     ##UNIX
-    coro = loop.create_unix_server(functools.partial(SocketHandler, CTX),
+    coro = loop.create_unix_server(functools.partial(SocketHandler, gctx),
             path=general["unix_socket"])
     try:
         server = loop.run_until_complete(coro)
     except FileNotFoundError:
         log.error("Socket file {} not accessible.".format(general["unix_socket"]))
-    CTX['srv'].append(server)
+    gctx['srv'].append(server)
     log.info('Serving on {}'.format(server.sockets[0].getsockname()))
 
     try:
@@ -141,12 +158,12 @@ while True:
         log.info("Okay shutting down")
     finally:
         loop.run_until_complete(loop.shutdown_asyncgens())
-        for server in CTX['srv']:
+        for server in gctx['srv']:
             ## TODO close current connections as well
             log.debug("shutting down service")
             server.close()
             loop.run_until_complete(server.wait_closed())
-    if not CTX['reboot']: break
+    if not gctx['reboot']: break
 
 pending = asyncio.Task.all_tasks()
 for task in pending: task.cancel()

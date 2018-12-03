@@ -7,6 +7,8 @@ DEFAULTS = {
         "config":       "/etc/cncd.conf",
         "log_level":    "ERROR",
         "library":      "/var/lib/gcode",
+        "plugin_path":  "/var/lib/cncd/plugins",
+        "plugins_enabled":  "",
     }
 }
 
