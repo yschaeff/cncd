@@ -2,9 +2,10 @@
 
 import urwid
 from urwid import Frame, Text, Filler, AttrMap, ListBox, Divider, SimpleFocusListWalker,\
-    Button, WidgetWrap, Pile, ExitMainLoop
+    Button, WidgetWrap, Pile, ExitMainLoop, Columns, Edit
 from functools import partial
 import logging as log
+import re
 
 palette = [('status', 'white,bold', 'dark blue'), \
         ('selected', 'black', 'white')]
@@ -20,7 +21,6 @@ class Window(urwid.WidgetWrap):
             AttrMap(self.header, 'status'), AttrMap(self.footer, 'status'), 'body')
         urwid.WidgetWrap.__init__(self, self.frame)
         self.hotkeys = {} ## key:func
-        self.add_hotkey('u', self.update, "update")
 
     def update(self):
         """Fetch new information and update labels, overwrite me"""
@@ -38,9 +38,10 @@ class Window(urwid.WidgetWrap):
             self.footer.set_text(f"server: OK")
 
     def add_hotkey(self, key, func, label):
-        self.hotkeys[key] = func
-        self.header_str += f" {key}:{label}"
-        self.header.set_text(self.header_str)
+        if key not in self.hotkeys:
+            self.hotkeys[key] = func
+            self.header_str += f" {key}:{label}"
+            self.header.set_text(self.header_str)
 
     def keypress(self, size, key):
         if key in self.hotkeys:
@@ -49,30 +50,77 @@ class Window(urwid.WidgetWrap):
         else:
             return super().keypress(size, key)
 
-class FileListWindow(Window):
-    def __init__(self, tui, device):
-        super().__init__(tui)
-        self.body.contents.append((Text("Select file to load on \"{device}\""), ('pack', None)))
-        self.body.contents.append((Divider(), ('pack', None)))
+class CB_Edit(Edit):
+    def __init__(self, caption, edit_text, type_cb, enter_cb):
+        super().__init__(caption, edit_text)
+        self.type_cb = type_cb
+        self.enter_cb = enter_cb
+    def keypress(self, size, key):
+        handled = super().keypress(size, key)
+        self.type_cb(self.get_edit_text())
+        if key == 'enter':
+            self.enter_cb()
+            return True
+        return handled
 
-        walker = SimpleFocusListWalker([])
-        listbox = ListBox(walker)
+
+class FileListWindow(Window):
+    def __init__(self, tui, locator, device):
+        super().__init__(tui)
+        self.body.contents.append((Text(f"Select file to load on \"{device}\""), ('pack', None)))
+        self.body.contents.append((Divider(), ('pack', None)))
+        self.device = device
+
+        self.locator = locator
+        self.device = device
+
+        def limit(regexp):
+            self.regexp = regexp
+            self.populate_list()
+        def enter():
+            if len(self.walker) < 1:
+                self.tui.pop_window()
+                return
+            button = self.walker[0]
+            button.keypress(1, 'enter')
+
+        editbox = CB_Edit("Limit (regexp): ", "", limit, enter)
+        self.body.contents.append((editbox, ('pack', 1)))
+        self.body.contents.append((Divider(), ('pack', 1)))
+
+        self.walker = SimpleFocusListWalker([])
+        listbox = ListBox(self.walker)
         self.body.contents.append((listbox, ('weight', 1)))
         self.body.focus_position = 2
+        self.update()
+        self.regexp = ".*"
+
+    def populate_list(self):
+        self.walker.clear()
+        try:
+            p = re.compile(self.regexp, re.IGNORECASE)
+        except re.error:
+            filtered_files = self.all_files
+        else:
+            filtered_files = filter(p.search, self.all_files)
+
         def load_cb(lines):
             for line in self.error_filter(lines): pass
-            tui.pop_window()
-
+            self.tui.pop_window()
         def button_cb(device, filename, button):
-            tui.controller.load(load_cb, device, filename)
+            self.tui.controller.load(load_cb, self.locator, filename)
+        self.walker.clear()
+        for line in filtered_files:
+            filename = line.strip()
+            button = Button(filename)
+            urwid.connect_signal(button, 'click', button_cb, user_args=[self.device, filename])
+            self.walker.append(AttrMap(button, None, focus_map='selected'))
 
+    def update(self):
         def devlist_cb(lines):
-            for line in self.error_filter(lines):
-                filename = line.strip()
-                button = Button(filename)
-                urwid.connect_signal(button, 'click', button_cb, user_args=[device, filename])
-                walker.append(AttrMap(button, None, focus_map='selected'))
-        tui.controller.get_filelist(devlist_cb, device)
+            self.all_files = [line for line in self.error_filter(lines)]
+            self.populate_list()
+        self.tui.controller.get_filelist(devlist_cb, self.locator)
 
 class DeviceWindow(Window):
     def __init__(self, tui, locator, device):
@@ -80,48 +128,56 @@ class DeviceWindow(Window):
         self.body.contents.append((Text(f"Selected device \"{device}\""), ('pack', None)))
         self.body.contents.append((Divider(), ('pack', None)))
 
-        walker = SimpleFocusListWalker([])
-        listbox = ListBox(walker)
+        self.locator = locator
+        self.device = device
+
+        self.walker = SimpleFocusListWalker([])
+        listbox = ListBox(self.walker)
         self.body.contents.append((listbox, ('weight', 1)))
         self.body.focus_position = 2
+        self.add_hotkey('u', self.update, "update")
+        self.update()
 
+    def update(self):
+        self.walker.clear()
+        locator = self.locator
         def cmd_cb(lines):
             for line in self.error_filter(lines): pass
 
         button = Button("Connect")
         def button_cb(button, locator):
-            tui.controller.connect(cmd_cb, locator)
+            self.tui.controller.connect(cmd_cb, locator)
         urwid.connect_signal(button, 'click', button_cb, locator)
-        walker.append(AttrMap(button, None, focus_map='selected'))
+        self.walker.append(AttrMap(button, None, focus_map='selected'))
         self.add_hotkey('c', partial(button_cb, button, locator), "connect")
 
         button = Button("Disconnect")
         def button_cb(button, locator):
-            tui.controller.disconnect(cmd_cb, locator)
+            self.tui.controller.disconnect(cmd_cb, locator)
         urwid.connect_signal(button, 'click', button_cb, locator)
-        walker.append(AttrMap(button, None, focus_map='selected'))
+        self.walker.append(AttrMap(button, None, focus_map='selected'))
         self.add_hotkey('d', partial(button_cb, button, locator), "disconnect")
 
         button = Button("Start")
         def button_cb(button, locator):
-            tui.controller.start(cmd_cb, locator)
+            self.tui.controller.start(cmd_cb, locator)
         urwid.connect_signal(button, 'click', button_cb, locator)
-        walker.append(AttrMap(button, None, focus_map='selected'))
+        self.walker.append(AttrMap(button, None, focus_map='selected'))
         self.add_hotkey('s', partial(button_cb, button, locator), "start")
 
         button = Button("Abort")
         def button_cb(button, locator):
-            tui.controller.stop(cmd_cb, locator)
+            self.tui.controller.stop(cmd_cb, locator)
         urwid.connect_signal(button, 'click', button_cb, locator)
-        walker.append(AttrMap(button, None, focus_map='selected'))
+        self.walker.append(AttrMap(button, None, focus_map='selected'))
         self.add_hotkey('a', partial(button_cb, button, locator), "abort")
 
         button = Button("Load File")
         def button_cb(button, locator):
-            window = FileListWindow(tui, locator)
-            tui.push_window(window)
+            window = FileListWindow(self.tui, locator, self.device)
+            self.tui.push_window(window)
         urwid.connect_signal(button, 'click', button_cb, locator)
-        walker.append(AttrMap(button, None, focus_map='selected'))
+        self.walker.append(AttrMap(button, None, focus_map='selected'))
         self.add_hotkey('l', partial(button_cb, button, locator), "load")
 
 class DeviceListWindow(Window):
@@ -130,18 +186,23 @@ class DeviceListWindow(Window):
         self.body.contents.append((Text("Available CNC Devices"), ('pack', None)))
         self.body.contents.append((Divider(), ('pack', None)))
 
-        walker = SimpleFocusListWalker([])
-        listbox = ListBox(walker)
+        self.walker = SimpleFocusListWalker([])
+        listbox = ListBox(self.walker)
         self.body.contents.append((listbox, ('weight', 1)))
         self.body.focus_position = 2
+        self.add_hotkey('u', self.update, "update")
+        self.update()
+
+    def update(self):
         def devlist_cb(devices):
+            self.walker.clear()
             def button_cb(locator, device, button):
-                window = DeviceWindow(tui, locator, device)
-                tui.push_window(window)
+                window = DeviceWindow(self.tui, locator, device)
+                self.tui.push_window(window)
             for locator, device in devices:
                 button = Button(device)
                 urwid.connect_signal(button, 'click', button_cb, user_args=[locator, device])
-                walker.append(AttrMap(button, None, focus_map='selected'))
+                self.walker.append(AttrMap(button, None, focus_map='selected'))
         self.tui.controller.get_devlist(devlist_cb)
 
 class Tui():
