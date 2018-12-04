@@ -75,7 +75,7 @@ class FileListWindow(Window):
         tui.controller.get_filelist(devlist_cb, device)
 
 class DeviceWindow(Window):
-    def __init__(self, tui, device):
+    def __init__(self, tui, locator, device):
         super().__init__(tui)
         self.body.contents.append((Text(f"Selected device \"{device}\""), ('pack', None)))
         self.body.contents.append((Divider(), ('pack', None)))
@@ -89,40 +89,40 @@ class DeviceWindow(Window):
             for line in self.error_filter(lines): pass
 
         button = Button("Connect")
-        def button_cb(button, device):
-            tui.controller.connect(cmd_cb, device)
-        urwid.connect_signal(button, 'click', button_cb, device)
+        def button_cb(button, locator):
+            tui.controller.connect(cmd_cb, locator)
+        urwid.connect_signal(button, 'click', button_cb, locator)
         walker.append(AttrMap(button, None, focus_map='selected'))
-        self.add_hotkey('c', partial(button_cb, button, device), "connect")
+        self.add_hotkey('c', partial(button_cb, button, locator), "connect")
 
         button = Button("Disconnect")
-        def button_cb(button, device):
-            tui.controller.disconnect(cmd_cb, device)
-        urwid.connect_signal(button, 'click', button_cb, device)
+        def button_cb(button, locator):
+            tui.controller.disconnect(cmd_cb, locator)
+        urwid.connect_signal(button, 'click', button_cb, locator)
         walker.append(AttrMap(button, None, focus_map='selected'))
-        self.add_hotkey('d', partial(button_cb, button, device), "disconnect")
+        self.add_hotkey('d', partial(button_cb, button, locator), "disconnect")
 
         button = Button("Start")
-        def button_cb(button, device):
-            tui.controller.start(cmd_cb, device)
-        urwid.connect_signal(button, 'click', button_cb, device)
+        def button_cb(button, locator):
+            tui.controller.start(cmd_cb, locator)
+        urwid.connect_signal(button, 'click', button_cb, locator)
         walker.append(AttrMap(button, None, focus_map='selected'))
-        self.add_hotkey('s', partial(button_cb, button, device), "start")
+        self.add_hotkey('s', partial(button_cb, button, locator), "start")
 
         button = Button("Abort")
-        def button_cb(button, device):
-            tui.controller.stop(cmd_cb, device)
-        urwid.connect_signal(button, 'click', button_cb, device)
+        def button_cb(button, locator):
+            tui.controller.stop(cmd_cb, locator)
+        urwid.connect_signal(button, 'click', button_cb, locator)
         walker.append(AttrMap(button, None, focus_map='selected'))
-        self.add_hotkey('a', partial(button_cb, button, device), "abort")
+        self.add_hotkey('a', partial(button_cb, button, locator), "abort")
 
         button = Button("Load File")
-        def button_cb(button, device):
-            window = FileListWindow(tui, device)
+        def button_cb(button, locator):
+            window = FileListWindow(tui, locator)
             tui.push_window(window)
-        urwid.connect_signal(button, 'click', button_cb, device)
+        urwid.connect_signal(button, 'click', button_cb, locator)
         walker.append(AttrMap(button, None, focus_map='selected'))
-        self.add_hotkey('l', partial(button_cb, button, device), "load")
+        self.add_hotkey('l', partial(button_cb, button, locator), "load")
 
 class DeviceListWindow(Window):
     def __init__(self, tui):
@@ -134,14 +134,13 @@ class DeviceListWindow(Window):
         listbox = ListBox(walker)
         self.body.contents.append((listbox, ('weight', 1)))
         self.body.focus_position = 2
-        def devlist_cb(lines):
-            def button_cb(button, device):
-                window = DeviceWindow(tui, device)
+        def devlist_cb(devices):
+            def button_cb(locator, device, button):
+                window = DeviceWindow(tui, locator, device)
                 tui.push_window(window)
-            for line in lines:
-                device = line.strip()
+            for locator, device in devices:
                 button = Button(device)
-                urwid.connect_signal(button, 'click', button_cb, device)
+                urwid.connect_signal(button, 'click', button_cb, user_args=[locator, device])
                 walker.append(AttrMap(button, None, focus_map='selected'))
         self.tui.controller.get_devlist(devlist_cb)
 

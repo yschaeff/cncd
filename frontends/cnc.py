@@ -4,6 +4,7 @@ import asyncio, concurrent
 import tui
 from functools import partial
 import logging as log
+import shlex
 
 PATH = '../.cncd.sock'
 
@@ -62,7 +63,11 @@ class Controller():
 
     def get_devlist(self, gui_cb):
         def controller_cb(lines):
-            gui_cb(lines)
+            devices = []
+            for line in lines:
+                locator, name = shlex.split(line)
+                devices.append( (locator, name) )
+            gui_cb(devices)
         self.protocol.send_message("devlist", controller_cb)
 
     def get_status(self, gui_cb, device):

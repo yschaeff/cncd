@@ -61,13 +61,14 @@ class Device():
         self.cfg = dev_cfg
         self.gctx = gctx
         self.con = None
-        log.info("Added device \"{}\"".format(self.cfg.name))
+        self.name = dev_cfg['name']
+        log.info("Added device \"{}\"".format(self.name))
         self.connected = False
         self.gcodefile = None
         self.handler = None
         self.input_buffer = b''
         self.gcode_task = None
-        self.dummy = dev_cfg["port"] == "dummy"
+        self.dummy = (dev_cfg["port"] == "dummy")
 
     def rx(self, data):
         self.input_buffer += data

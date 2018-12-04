@@ -108,8 +108,8 @@ async def stat(gctx, cctx, lctx):
 async def devlist(gctx, cctx, lctx):
     """List configured devices"""
     devs = gctx['dev']
-    for name in devs.keys():
-        lctx.writeln("{}".format(name))
+    for locator, device in devs.items():
+        lctx.writeln(f"\"{locator}\" \"{device.name}\"")
 
 async def dumpconfig(gctx, cctx, lctx):
     """List configuration file"""

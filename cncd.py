@@ -108,16 +108,25 @@ gctx = {}
 while True:
     # this will take care of config file, defaults commandline arguments and
     # setting log levels
-    gctx['cfg'] = load_configuration()
+    cfg = load_configuration()
+    
+    gctx['cfg'] = cfg
     gctx['hdl'] = [Handler(name) for name in handlers.handlers]
     gctx['srv'] = []
     gctx['reboot'] = False
-    gctx['dev'] = {}
-    for name in gctx['cfg'].sections():
-        if name == "general": continue
-        gctx['dev'][name] = robot.Device(gctx['cfg'][name], gctx)
 
-    general = gctx['cfg']["general"]
+    general = cfg["general"]
+
+    ## gather all CNC devices
+    gctx['dev'] = {}
+    cnc_devices = [dev.strip() for dev in general['cnc_devices'].split(',')]
+    for device in cnc_devices:
+        try:
+            section = cfg[device]
+        except KeyError:
+            log.error(f"Can not find section {device} in configuration.")
+            continue
+        gctx['dev'][device] = robot.Device(section, gctx)
 
     pluginmanager = PluginManager(gctx)
     gctx['pluginmanager'] = pluginmanager
