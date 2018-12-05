@@ -99,6 +99,35 @@ class SocketHandler(asyncio.Protocol):
             self.data = self.data[idx+1:]
             self.command(line)
 
+def load_devices_from_cfg(gctx):
+    cfg = gctx['cfg']
+    general = cfg["general"]
+
+    gctx['dev'] = {}
+    cnc_devices = [dev.strip() for dev in general['cnc_devices'].split(',')]
+    for device in cnc_devices:
+        try:
+            section = cfg[device]
+        except KeyError:
+            log.error(f"Can not find section {device} in configuration.")
+            continue
+        gctx['dev'][device] = robot.Device(section, gctx)
+
+def load_webcams_from_cfg(gctx):
+    cfg = gctx['cfg']
+    general = cfg["general"]
+
+    gctx['webcams'] = {}
+    Webcam = namedtuple("Webcam", "name url")
+    cameras = [cam.strip() for cam in general['cameras'].split(',')]
+    for camera in cameras:
+        try:
+            section = cfg[camera]
+            gctx['webcams'][camera] = Webcam(section['name'], section['url'])
+        except KeyError:
+            log.error(f"Error in section {camera} of configuration.")
+            continue
+
 if not os.geteuid():
     log.fatal('Thou Shalt Not Run As Root.')
     exit(1)
@@ -117,16 +146,8 @@ while True:
 
     general = cfg["general"]
 
-    ## gather all CNC devices
-    gctx['dev'] = {}
-    cnc_devices = [dev.strip() for dev in general['cnc_devices'].split(',')]
-    for device in cnc_devices:
-        try:
-            section = cfg[device]
-        except KeyError:
-            log.error(f"Can not find section {device} in configuration.")
-            continue
-        gctx['dev'][device] = robot.Device(section, gctx)
+    load_devices_from_cfg(gctx)
+    load_webcams_from_cfg(gctx)
 
     pluginmanager = PluginManager(gctx)
     gctx['pluginmanager'] = pluginmanager

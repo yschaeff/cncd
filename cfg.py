@@ -10,6 +10,7 @@ DEFAULTS = {
         "plugin_path":  "/var/lib/cncd/plugins",
         "plugins_enabled":  "",
         "cnc_devices":  "",
+        "cameras":  "",
     }
 }
 

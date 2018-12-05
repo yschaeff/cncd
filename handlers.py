@@ -111,6 +111,12 @@ async def devlist(gctx, cctx, lctx):
     for locator, device in devs.items():
         lctx.writeln(f"\"{locator}\" \"{device.name}\"")
 
+async def camlist(gctx, cctx, lctx):
+    """List configured webcams"""
+    webcams = gctx['webcams']
+    for locator, webcam in webcams.items():
+        lctx.writeln(f"\"{locator}\" \"{webcam.name}\" \"{webcam.url}\"")
+
 async def dumpconfig(gctx, cctx, lctx):
     """List configuration file"""
     cfg = gctx['cfg']
@@ -237,5 +243,5 @@ async def loglevel(gctx, cctx, lctx):
     rootlogger.setLevel(level)
 
 handlers = [connect, disconnect, status, load, quit, shutdown, reboot, help, 
-    devlist, loglevel, stat, gcode,
+    devlist, camlist, loglevel, stat, gcode,
     start, stop, dumpconfig, dumpgctx, dumpcctx, dumplctx, sleep]
