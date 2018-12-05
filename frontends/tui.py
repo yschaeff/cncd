@@ -6,6 +6,7 @@ from urwid import Frame, Text, Filler, AttrMap, ListBox, Divider, SimpleFocusLis
 from functools import partial
 import logging as log
 import re
+import webbrowser
 
 palette = [('status', 'white,bold', 'dark blue'), \
         ('selected', 'black', 'white')]
@@ -180,6 +181,31 @@ class DeviceWindow(Window):
         self.walker.append(AttrMap(button, None, focus_map='selected'))
         self.add_hotkey('l', partial(button_cb, button, locator), "load")
 
+class WebcamWindow(Window):
+    def __init__(self, tui):
+        super().__init__(tui)
+        self.body.contents.append((Text("Available Webcams"), ('pack', None)))
+        self.body.contents.append((Divider(), ('pack', None)))
+
+        self.walker = SimpleFocusListWalker([])
+        listbox = ListBox(self.walker)
+        self.body.contents.append((listbox, ('weight', 1)))
+        self.body.focus_position = 2
+        self.add_hotkey('u', self.update, "update")
+        self.update()
+
+    def update(self):
+        def camlist_cb(webcams):
+            self.walker.clear()
+            def button_cb(locator, url, button):
+                webbrowser.open_new(url)
+                self.tui.pop_window()
+            for locator, name, url in webcams:
+                button = Button(name)
+                urwid.connect_signal(button, 'click', button_cb, user_args=[locator, url])
+                self.walker.append(AttrMap(button, None, focus_map='selected'))
+        self.tui.controller.get_camlist(camlist_cb)
+
 class DeviceListWindow(Window):
     def __init__(self, tui):
         super().__init__(tui)
@@ -191,7 +217,12 @@ class DeviceListWindow(Window):
         self.body.contents.append((listbox, ('weight', 1)))
         self.body.focus_position = 2
         self.add_hotkey('u', self.update, "update")
+        self.add_hotkey('w', self.webcams, "webcams")
         self.update()
+
+    def webcams(self):
+        window = WebcamWindow(self.tui)
+        self.tui.push_window(window)
 
     def update(self):
         def devlist_cb(devices):

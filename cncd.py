@@ -183,7 +183,7 @@ while True:
             log.debug("shutting down service")
             server.close()
             loop.run_until_complete(server.wait_closed())
-    pluginmanager.unload_plugins()
+    gctx['pluginmanager'].unload_plugins()
     if not gctx['reboot']: break
 
 pending = asyncio.Task.all_tasks()

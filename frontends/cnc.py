@@ -70,6 +70,15 @@ class Controller():
             gui_cb(devices)
         self.protocol.send_message("devlist", controller_cb)
 
+    def get_camlist(self, gui_cb):
+        def controller_cb(lines):
+            webcams = []
+            for line in lines:
+                locator, name, url = shlex.split(line)
+                webcams.append( (locator, name, url) )
+            gui_cb(webcams)
+        self.protocol.send_message("camlist", controller_cb)
+
     def get_status(self, gui_cb, device):
         def controller_cb(lines):
             gui_cb(lines)
