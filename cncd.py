@@ -128,6 +128,11 @@ def load_webcams_from_cfg(gctx):
             log.error(f"Error in section {camera} of configuration.")
             continue
 
+def load_plugins_from_cfg(gctx):
+    pluginmanager = PluginManager(gctx)
+    gctx['pluginmanager'] = pluginmanager
+    pluginmanager.load_plugins()
+
 if not os.geteuid():
     log.fatal('Thou Shalt Not Run As Root.')
     exit(1)
@@ -148,10 +153,7 @@ while True:
 
     load_devices_from_cfg(gctx)
     load_webcams_from_cfg(gctx)
-
-    pluginmanager = PluginManager(gctx)
-    gctx['pluginmanager'] = pluginmanager
-    pluginmanager.load_plugins()
+    load_plugins_from_cfg(gctx)
 
     ##TCP
     coro = loop.create_server(functools.partial(SocketHandler, gctx),
