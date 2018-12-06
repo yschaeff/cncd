@@ -2,7 +2,7 @@
 
 import urwid
 from urwid import Frame, Text, Filler, AttrMap, ListBox, Divider, SimpleFocusListWalker,\
-    Button, WidgetWrap, Pile, ExitMainLoop, Columns, Edit
+    Button, WidgetWrap, Pile, ExitMainLoop, Columns, Edit, Padding, BoxAdapter
 from functools import partial
 import logging as log
 import re
@@ -14,7 +14,7 @@ palette = [('status', 'white,bold', 'dark blue'), \
 class Window(urwid.WidgetWrap):
     def __init__(self, tui):
         self.tui = tui
-        self.header_str = "Q:quit q:previous"
+        self.header_str = "Q:quit q:previous L:log"
         self.header = Text(self.header_str)
         self.body = Pile([])
         self.footer = Text("placeholder")
@@ -50,6 +50,12 @@ class Window(urwid.WidgetWrap):
             return True
         else:
             return super().keypress(size, key)
+
+class LogWindow(Window):
+    def __init__(self, tui):
+        super().__init__(tui)
+        self.body.contents.append((Text(f"LOG"), ('pack', None)))
+        self.body.contents.append((Divider(), ('pack', None)))
 
 class CB_Edit(Edit):
     def __init__(self, caption, edit_text, type_cb, enter_cb):
@@ -237,15 +243,10 @@ class DeviceListWindow(Window):
         self.tui.controller.get_devlist(devlist_cb)
 
 class Tui():
-    def set_header_text(self, txt):
-        self.header.set_text("Q:quit! q:back"+txt)
     def __init__(self, asyncio_loop, controller):
         urwid.command_map['j'] = 'cursor down'
         urwid.command_map['k'] = 'cursor up'
         self.controller = controller
-        self.header = Text("")
-        self.set_header_text("")
-        self.footer = Text("status")
         self.windowstack = []
 
         self.asyncio_loop = asyncio_loop
@@ -254,23 +255,41 @@ class Tui():
         self.mainloop = urwid.MainLoop(window, palette,
                 unhandled_input=self._unhandled_input, event_loop=evl)
 
+    def toggle_log(self):
+        if type(self.mainloop.widget) != Columns:
+            columns = Columns([self.mainloop.widget, LogWindow(self)], 1)
+            self.mainloop.widget = columns
+        else:
+            window = self.mainloop.widget[0]
+            self.mainloop.widget = window
+
     def push_window(self, window):
-        self.windowstack.append(self.mainloop.widget)
-        self.mainloop.widget = window
+        rootwidget = self.mainloop.widget
+        if type(rootwidget) != Columns:
+            self.windowstack.append(rootwidget)
+            self.mainloop.widget = window
+        else:
+            self.windowstack.append(rootwidget[0])
+            rootwidget.contents[0] = (window, rootwidget.options(box_widget=True))
 
     def pop_window(self):
-        if self.windowstack:
-            window = self.windowstack.pop()
-            window.update()
+        if not self.windowstack: return
+        window = self.windowstack.pop()
+        window.update()
+        rootwidget = self.mainloop.widget
+        if type(rootwidget) != Columns:
             self.mainloop.widget = window
+        else:
+            rootwidget.contents[0] = (window, rootwidget.options(box_widget=True))
 
     def _unhandled_input(self, key):
         if key == 'q':
             self.pop_window()
-        if key == 'Q':
+        elif key == 'Q':
             self.asyncio_loop.stop()
+        elif key == 'L':
+            self.toggle_log()
         else:
-            self.footer.set_text(f"Unhandled Key Press: {key}")
             return False
         return True
 
@@ -281,14 +300,3 @@ class Tui():
         """Restore terminal and allow exceptions"""
         self.mainloop.stop()
         return False
-
-    def error_filter(self, lines):
-        errors = False
-        for line in lines:
-            if line.startswith("ERROR"):
-                self.footer.set_text(f"server: {line.strip()}")
-                errors = True
-            else:
-                yield line
-        if not errors:
-            self.footer.set_text(f"server: OK")
