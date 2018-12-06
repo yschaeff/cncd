@@ -60,14 +60,19 @@ class Device():
         self.cfg = dev_cfg
         self.gctx = gctx
         self.con = None
-        self.name = dev_cfg['name']
-        log.info("Added device \"{}\"".format(self.name))
+        log.info("Added device \"{}\"".format(self.cfg['name']))
         self.connected = False
         self.gcodefile = None
         self.handler = None
         self.input_buffer = b''
         self.gcode_task = None
         self.dummy = (dev_cfg["port"] == "dummy")
+
+    def update_cfg(self, dev_cfg):
+        self.cfg = dev_cfg
+
+    def get_name(self):
+        return self.cfg['name']
 
     def rx(self, data):
         self.input_buffer += data
@@ -76,7 +81,7 @@ class Device():
             if index < 0: break
             line  = self.input_buffer[:index+1]
             self.input_buffer = self.input_buffer[index+1:]
-            log.debug("response {}: '{}'".format(self.name, line.decode().strip()))
+            log.debug("response {}: '{}'".format(self.cfg['name'], line.decode().strip()))
             if line.decode().strip() == 'ok':
                 self.response_event.set()
             elif line.decode().strip() == 'ERROR':
@@ -154,7 +159,7 @@ class Device():
                 if idx>=0: line = line[:idx]
                 gcode = line.strip()
                 if not gcode: continue
-                log.debug("command {}: '{}'".format(self.name, gcode))
+                log.debug("command {}: '{}'".format(self.cfg['name'], gcode))
                 self.handler.write((gcode+'\n').encode())
                 ## wait for response
                 await self.response_event.wait()

@@ -111,7 +111,8 @@ def load_devices_from_cfg(gctx):
     cfg = gctx['cfg']
     general = cfg["general"]
 
-    gctx['dev'] = {}
+    ## Do not delete devices. otherwise we can't control existing devices!
+    #gctx['dev'] = {}
     cnc_devices = [dev.strip() for dev in general['cnc_devices'].split(',')]
     for device in cnc_devices:
         try:
@@ -119,7 +120,10 @@ def load_devices_from_cfg(gctx):
         except KeyError:
             log.error(f"Can not find section {device} in configuration.")
             continue
-        gctx['dev'][device] = robot.Device(section, gctx)
+        if device in gctx['dev']:
+            gctx['dev'][device].update_cfg(section)
+        else:
+            gctx['dev'][device] = robot.Device(section, gctx)
 
 def load_webcams_from_cfg(gctx):
     cfg = gctx['cfg']
@@ -147,6 +151,7 @@ if not os.geteuid():
 
 loop = asyncio.get_event_loop()
 gctx = {}
+gctx['dev'] = {}
 while True:
     # this will take care of config file, defaults commandline arguments and
     # setting log levels

@@ -109,7 +109,7 @@ async def devlist(gctx, cctx, lctx):
     """List configured devices"""
     devs = gctx['dev']
     for locator, device in devs.items():
-        lctx.writeln(f"\"{locator}\" \"{device.name}\"")
+        lctx.writeln(f"\"{locator}\" \"{device.get_name()}\"")
 
 async def camlist(gctx, cctx, lctx):
     """List configured webcams"""
