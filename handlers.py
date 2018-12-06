@@ -242,6 +242,37 @@ async def loglevel(gctx, cctx, lctx):
         return
     rootlogger.setLevel(level)
 
+@nargs(2)
+async def tracelog(gctx, cctx, lctx):
+    """args: start|stop receive server log messages"""
+    class ByteStreamHandler(log.StreamHandler):
+        def __init__(self, writefunc):
+            super().__init__()
+            self.writefunc = writefunc
+        def emit(self, record):
+            try:
+                self.writefunc(record.msg)
+            except:
+                pass
+    if lctx.argv[1] == 'start':
+        loghandler = ByteStreamHandler(lctx.writeln)
+        rootlogger = log.getLogger()
+        rootlogger.addHandler(loghandler)
+        if 'tracelog_stop_event' not in cctx:
+            event = asyncio.Event()
+            event.clear()
+            cctx['tracelog_stop_event'] = event
+        else:
+            event = cctx['tracelog_stop_event']
+        event.clear()
+        await event.wait()
+        rootlogger.removeHandler(loghandler)
+    elif lctx.argv[1] == 'stop':
+        if 'tracelog_stop_event' not in cctx:
+            return
+        event = cctx['tracelog_stop_event']
+        event.set()
+
 handlers = [connect, disconnect, status, load, quit, shutdown, reboot, help, 
-    devlist, camlist, loglevel, stat, gcode,
+    devlist, camlist, loglevel, stat, gcode, tracelog,
     start, stop, dumpconfig, dumpgctx, dumpcctx, dumplctx, sleep]

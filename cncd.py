@@ -77,9 +77,15 @@ class SocketHandler(asyncio.Protocol):
             cb = handlers.last_resort
         ## we have a handler, construct a local context
         def writeln(msg):
-            log.debug("Sending '{}'".format(msg))
+            ## This function might be called by a log handler.
+            ## do not emit any log messages in this func!
             line = str(msg) + '\n'
-            self.cctx['transport'].write("{} {}".format(nonce, line).encode())
+            transport = self.cctx['transport']
+            if transport.is_closing():
+                ## an exception here would cause a log message to be emitted!
+                ## so don't attempt to write!
+                return
+            transport.write("{} {}".format(nonce, line).encode())
         Lctx = namedtuple("Lctx", "nonce writeln argv")
         lctx = Lctx(nonce, writeln, argv)
         task = asyncio.ensure_future(cb(self.gctx, self.cctx, lctx))
