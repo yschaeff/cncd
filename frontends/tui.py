@@ -62,6 +62,9 @@ class LogWindow(Window):
         self.body.contents.append((listbox, ('weight', 1)))
         self.body.focus_position = 2
         self.log_messages = []
+        #self.add_hotkey('-', self.update, "increase")
+        #self.add_hotkey('+', self.update, "decrease")
+        #c e w i d
         self.update()
 
     def populate_list(self):

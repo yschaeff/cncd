@@ -250,12 +250,16 @@ async def tracelog(gctx, cctx, lctx):
             super().__init__()
             self.writefunc = writefunc
         def emit(self, record):
+            formatted = self.format(record)
             try:
-                self.writefunc(record.msg)
+                self.writefunc(formatted)
             except:
+                ## never ever crash here. Trace might be logged!
                 pass
     if lctx.argv[1] == 'start':
         loghandler = ByteStreamHandler(lctx.writeln)
+        formatter = log.Formatter('%(levelname)s:%(message)s')
+        loghandler.setFormatter(formatter)
         rootlogger = log.getLogger()
         rootlogger.addHandler(loghandler)
         if 'tracelog_stop_event' not in cctx:
