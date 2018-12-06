@@ -66,6 +66,8 @@ class SocketHandler(asyncio.Protocol):
             argv = argv[1:]
         except ValueError:
             nonce = self.uid
+        if not argv:
+            return
         cmd_handlers = [h for h in self.gctx['hdl'] if h.handles(argv)]
         # if we have multiple we must have an exact match
         exact = (len(cmd_handlers) != 1)

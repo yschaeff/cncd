@@ -9,7 +9,12 @@ import re
 import webbrowser
 
 palette = [('status', 'white,bold', 'dark blue'), \
-        ('selected', 'black', 'white')]
+        ('selected', 'black', 'white'),
+        ('default', 'dark cyan', 'black'),
+        ('info', 'white', 'black'),
+        ('warning', 'yellow', 'black'),
+        ('error', 'light red', 'black'),
+        ('critical', 'white', 'dark red')]
 
 class Window(urwid.WidgetWrap):
     def __init__(self, tui):
@@ -70,8 +75,19 @@ class LogWindow(Window):
     def populate_list(self):
         self.walker.clear()
         for line in reversed(self.log_messages):
+            if line.startswith('CRITICAL'):
+                focusmap = 'critical'
+            elif line.startswith('ERROR'):
+                focusmap = 'error'
+            elif line.startswith('WARNING'):
+                focusmap = 'warning'
+            elif line.startswith('INFO'):
+                focusmap = 'info'
+            else:
+                focusmap = 'default'
+
             txt = Text(line.strip())
-            self.walker.append(AttrMap(txt, None, focus_map='selected'))
+            self.walker.append(AttrMap(txt, focusmap))
 
     def update(self):
         def log_cb(lines):

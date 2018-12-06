@@ -11,7 +11,6 @@ class DummySerialConnection():
         self.device.handler = None
         log.info("Dummy serial connection closed")
     def write(self, msg):
-        log.info("Dummy serial connection write")
         async def slow_ack():
             await asyncio.sleep(.1)
             self.device.rx(b'ok\n')
@@ -77,7 +76,7 @@ class Device():
             if index < 0: break
             line  = self.input_buffer[:index+1]
             self.input_buffer = self.input_buffer[index+1:]
-            log.debug("robot says '{}'".format(line.decode().strip()))
+            log.debug("response {}: '{}'".format(self.name, line.decode().strip()))
             if line.decode().strip() == 'ok':
                 self.response_event.set()
             elif line.decode().strip() == 'ERROR':
@@ -155,7 +154,7 @@ class Device():
                 if idx>=0: line = line[:idx]
                 gcode = line.strip()
                 if not gcode: continue
-                log.debug("simon says '{}'".format(gcode))
+                log.debug("command {}: '{}'".format(self.name, gcode))
                 self.handler.write((gcode+'\n').encode())
                 ## wait for response
                 await self.response_event.wait()
