@@ -57,6 +57,30 @@ class LogWindow(Window):
         self.body.contents.append((Text(f"LOG"), ('pack', None)))
         self.body.contents.append((Divider(), ('pack', None)))
 
+        self.walker = SimpleFocusListWalker([])
+        listbox = ListBox(self.walker)
+        self.body.contents.append((listbox, ('weight', 1)))
+        self.body.focus_position = 2
+        self.log_messages = []
+        self.update()
+
+    def populate_list(self):
+        self.walker.clear()
+        for line in reversed(self.log_messages):
+            txt = Text(line.strip())
+            self.walker.append(AttrMap(txt, None, focus_map='selected'))
+
+    def update(self):
+        def log_cb(lines):
+            self.log_messages.extend(lines)
+            if len(self.log_messages) > 100:
+                self.log_messages = self.log_messages[-100:]
+            self.populate_list()
+        self.tui.controller.start_logs(log_cb)
+
+    def finalize(self):
+        self.tui.controller.stop_logs()
+
 class CB_Edit(Edit):
     def __init__(self, caption, edit_text, type_cb, enter_cb):
         super().__init__(caption, edit_text)
@@ -69,7 +93,6 @@ class CB_Edit(Edit):
             self.enter_cb()
             return True
         return handled
-
 
 class FileListWindow(Window):
     def __init__(self, tui, locator, device):
@@ -103,7 +126,6 @@ class FileListWindow(Window):
         self.regexp = ".*"
 
     def populate_list(self):
-        self.walker.clear()
         try:
             p = re.compile(self.regexp, re.IGNORECASE)
         except re.error:
@@ -261,6 +283,8 @@ class Tui():
             self.mainloop.widget = columns
         else:
             window = self.mainloop.widget[0]
+            logwindow = self.mainloop.widget[1]
+            logwindow.finalize()
             self.mainloop.widget = window
 
     def push_window(self, window):

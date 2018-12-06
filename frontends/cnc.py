@@ -14,9 +14,9 @@ class CncProtocol(asyncio.Protocol):
         self.nonce = 1
         self.data = ""
         self.gui_exception = None
-    def send_message(self, message, response_handler = None):
+    def send_message(self, message, response_handler = None, flush=False):
         self.transport.write(f"{self.nonce} {message}\n".encode())
-        self.waiters[self.nonce] = (response_handler, [])
+        self.waiters[self.nonce] = (response_handler, [], flush)
         self.nonce += 1
     def connection_made(self, transport):
         self.transport = transport
@@ -41,14 +41,17 @@ class CncProtocol(asyncio.Protocol):
             if nonce not in self.waiters:
                 assert(nonce in self.waiters) # remove me!
                 continue
-            handler, buf = self.waiters[nonce]
+            handler, buf, flush = self.waiters[nonce]
             if line.strip() == ".":
-                try:
-                    handler(buf)
-                except Exception as e:
-                    self.gui_exception = e
-                    self.transport.close()
+                if handler:
+                    try:
+                        handler(buf)
+                    except Exception as e:
+                        self.gui_exception = e
+                        self.transport.close()
                 self.waiters.pop(nonce)
+            elif flush:
+                handler([line])
             else:
                 buf.append(line)
     def error_received(self, exc):
@@ -118,6 +121,15 @@ class Controller():
             if gui_cb:
                 gui_cb(lines)
         self.protocol.send_message(f"load \"{device}\" \"{filename}\"", controller_cb)
+
+    def start_logs(self, gui_cb):
+        def controller_cb(lines):
+            if gui_cb:
+                gui_cb(lines)
+        self.protocol.send_message(f"tracelog start", controller_cb, flush=True)
+
+    def stop_logs(self):
+        self.protocol.send_message(f"tracelog stop", flush=True)
 
 def main(loop):
     future = loop.create_unix_connection(partial(CncProtocol), PATH)
