@@ -20,12 +20,17 @@ def parse_args(defaults):
     from argparse import ArgumentParser
     general = defaults['general']
     parser = ArgumentParser()
+    parser.add_argument("-v", "--version", action="store_true")
     parser.add_argument("-c", "--config", help="Alternative configuration file",
             action="store")
     parser.add_argument("-l", "--log-level",
             choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
             type=str.upper, action="store")
     args = parser.parse_args()
+
+    if args.version:
+        print("version: 1")
+        exit(0)
 
     ## prelimenary log level
     if args.log_level:
