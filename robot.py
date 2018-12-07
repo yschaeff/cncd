@@ -67,6 +67,8 @@ class Device():
         self.input_buffer = b''
         self.gcode_task = None
         self.dummy = (dev_cfg["port"] == "dummy")
+        self.is_printing = False
+        self.printing_file = ""
 
     def update_cfg(self, dev_cfg):
         self.cfg = dev_cfg
@@ -88,7 +90,20 @@ class Device():
                 self.respnse_event.set()
 
     def status(self):
-        s = "connected {}".format(self.handler != None)
+        c = (self.handler != None)
+        p = self.is_printing
+        Te = ""
+        TSe = ""
+        Tb = ""
+        TSb = ""
+        fstaged = self.gcodefile
+        fprinting = self.printing_file
+        paused = False
+        progress = ""
+        total = ""
+        s = f"Connected:{c} printing:{p} Textruder:{Te}/{TSe}" + \
+            f" Tbed {Tb}/{TSb} file:\"{fprinting}\" staged:\"{fstaged}\"" + \
+            f" paused:{paused} progress:{progress}/{total}"
         return s
     def send_gcode(self, gcode):
         if not self.con:
@@ -153,6 +168,8 @@ class Device():
         return True
 
     async def replay_gcode(self):
+        self.is_printing = True
+        self.printing_file = self.gcodefile
         with open(self.gcodefile) as fd:
             for line in fd:
                 idx = line.rfind(';')
@@ -164,12 +181,15 @@ class Device():
                 ## wait for response
                 await self.response_event.wait()
                 self.response_event.clear()
+        self.printing_file = ""
+        self.is_printing = False
 
     async def start(self): ## rename print file?
         if not self.gcodefile:
             log.warning("Asking for start but no gcode file selected.")
             return False ## emit warning
         if not self.handler: return False
+        if self.is_printing: return False
         #await asyncio.sleep(1) # make sure printer is done with init msgs
         self.gcode_task = asyncio.ensure_future(self.replay_gcode())
         return True
@@ -180,5 +200,7 @@ class Device():
     async def stop(self):
         if self.gcode_task:
             self.gcode_task.cancel()
+        self.printing_file = ""
+        self.is_printing = False
         return True
 
