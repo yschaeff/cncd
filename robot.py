@@ -69,6 +69,7 @@ class Device():
         self.dummy = (dev_cfg["port"] == "dummy")
         self.is_printing = False
         self.printing_file = ""
+        self.stop_event = asyncio.Event()
 
     def update_cfg(self, dev_cfg):
         self.cfg = dev_cfg
@@ -166,20 +167,34 @@ class Device():
         self.gcodefile = filename
         return True
 
+    async def send(self, gcode):
+        gcode = gcode.strip()
+        if not gcode: return
+        log.debug("command {}: '{}'".format(self.cfg['name'], gcode))
+        self.handler.write((gcode+'\n').encode())
+        ## wait for response
+        await self.response_event.wait()
+        self.response_event.clear()
+
+    async def replay_abort_gcode(self):
+        log.warning("Print job aborted.")
+        if 'abort_gcodes' in self.cfg:
+            gcodes = self.cfg['abort_gcodes']
+            for gcode in gcodes.split(';'):
+                await self.send(gcode)
+
     async def replay_gcode(self):
+        self.stop_event.clear()
         self.is_printing = True
         self.printing_file = self.gcodefile
         with open(self.gcodefile) as fd:
             for line in fd:
                 idx = line.rfind(';')
                 if idx>=0: line = line[:idx]
-                gcode = line.strip()
-                if not gcode: continue
-                log.debug("command {}: '{}'".format(self.cfg['name'], gcode))
-                self.handler.write((gcode+'\n').encode())
-                ## wait for response
-                await self.response_event.wait()
-                self.response_event.clear()
+                await self.send(line)
+                if self.stop_event.is_set():
+                    await self.replay_abort_gcode()
+                    break
         self.printing_file = ""
         self.is_printing = False
 
@@ -197,9 +212,6 @@ class Device():
         pass
 
     async def stop(self):
-        if self.gcode_task:
-            self.gcode_task.cancel()
-        self.printing_file = ""
-        self.is_printing = False
+        self.stop_event.set()
         return True
 
