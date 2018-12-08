@@ -70,6 +70,7 @@ class Device():
         self.is_printing = False
         self.printing_file = ""
         self.stop_event = asyncio.Event()
+        self.resume_event = asyncio.Event()
 
     def update_cfg(self, dev_cfg):
         self.cfg = dev_cfg
@@ -99,7 +100,7 @@ class Device():
         TSb = ""
         fstaged = self.gcodefile
         fprinting = self.printing_file
-        paused = False
+        paused = not self.resume_event.is_set()
         progress = ""
         total = ""
         s = f"Connected:{c} printing:{p} Textruder:{Te}/{TSe}" + \
@@ -185,6 +186,7 @@ class Device():
 
     async def replay_gcode(self):
         self.stop_event.clear()
+        self.resume_event.set()
         self.is_printing = True
         self.printing_file = self.gcodefile
         with open(self.gcodefile) as fd:
@@ -192,9 +194,12 @@ class Device():
                 idx = line.rfind(';')
                 if idx>=0: line = line[:idx]
                 await self.send(line)
+                if not self.resume_event.is_set():
+                    await self.resume_event.wait()
                 if self.stop_event.is_set():
                     await self.replay_abort_gcode()
                     break
+
         self.printing_file = ""
         self.is_printing = False
 
@@ -209,9 +214,15 @@ class Device():
         return True
 
     def pause(self):
-        pass
+        self.resume_event.clear()
+        return True
+
+    def resume(self):
+        self.resume_event.set()
+        return True
 
     async def stop(self):
         self.stop_event.set()
+        self.resume()
         return True
 

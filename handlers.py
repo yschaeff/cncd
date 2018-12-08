@@ -194,6 +194,24 @@ async def stop(gctx, cctx, lctx, dev):
     else:
         lctx.writeln("ERROR")
 
+@nargs(2)
+@parse_device
+async def pause(gctx, cctx, lctx, dev):
+    """pause executing gcode"""
+    if dev.pause():
+        lctx.writeln("OK")
+    else:
+        lctx.writeln("ERROR")
+
+@nargs(2)
+@parse_device
+async def resume(gctx, cctx, lctx, dev):
+    """resume executing gcode"""
+    if dev.resume():
+        lctx.writeln("OK")
+    else:
+        lctx.writeln("ERROR")
+
 @nargs(3)
 @parse_device
 async def gcode(gctx, cctx, lctx, dev):
@@ -279,4 +297,4 @@ async def tracelog(gctx, cctx, lctx):
 
 handlers = [connect, disconnect, status, load, quit, shutdown, reboot, help, 
     devlist, camlist, loglevel, stat, gcode, tracelog,
-    start, stop, dumpconfig, dumpgctx, dumpcctx, dumplctx, sleep]
+    start, stop, pause, resume, dumpconfig, dumpgctx, dumpcctx, dumplctx, sleep]
