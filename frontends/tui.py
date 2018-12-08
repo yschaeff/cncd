@@ -223,6 +223,20 @@ class DeviceWindow(Window):
         self.walker.append(AttrMap(button, None, focus_map='selected'))
         self.add_hotkey('a', partial(button_cb, button, locator), "abort")
 
+        button = Button("Pause")
+        def button_cb(button, locator):
+            self.tui.controller.pause(cmd_cb, locator)
+        urwid.connect_signal(button, 'click', button_cb, locator)
+        self.walker.append(AttrMap(button, None, focus_map='selected'))
+        self.add_hotkey('p', partial(button_cb, button, locator), "pause")
+
+        button = Button("Resume")
+        def button_cb(button, locator):
+            self.tui.controller.resume(cmd_cb, locator)
+        urwid.connect_signal(button, 'click', button_cb, locator)
+        self.walker.append(AttrMap(button, None, focus_map='selected'))
+        self.add_hotkey('r', partial(button_cb, button, locator), "resume")
+
         button = Button("Load File")
         def button_cb(button, locator):
             window = FileListWindow(self.tui, locator, self.device)

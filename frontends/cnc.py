@@ -116,6 +116,18 @@ class Controller():
                 gui_cb(lines)
         self.protocol.send_message(f"stop \"{device}\"", controller_cb)
 
+    def pause(self, gui_cb, device):
+        def controller_cb(lines):
+            if gui_cb:
+                gui_cb(lines)
+        self.protocol.send_message(f"pause \"{device}\"", controller_cb)
+
+    def resume(self, gui_cb, device):
+        def controller_cb(lines):
+            if gui_cb:
+                gui_cb(lines)
+        self.protocol.send_message(f"resume \"{device}\"", controller_cb)
+
     def load(self, gui_cb, device, filename):
         def controller_cb(lines):
             if gui_cb:
