@@ -121,15 +121,14 @@ class Device():
             try:
                 r = future.result()
             except concurrent.futures._base.CancelledError:
-                log.warning('Task preemtively cancelled')
+                log.warning('Connect task cancelled')
             except FileNotFoundError as e:
-                print("ERROR {}".format(str(e)))
+                log.error(f"{e}")
             except serial.serialutil.SerialException as e:
-                log.critical("ERROR {}".format(str(e)))
+                log.error(f"{e}")
             except Exception as e:
-                print("ERROR Server side exception: {}".format(str(e)))
+                log.critical(f"{e}")
             else:
-                print("AIGHT")
                 device.success = True
             finally:
                 event.set()
@@ -153,7 +152,7 @@ class Device():
             log.info("Serial device connected successfully.")
             self.input_buffer = b''
         else:
-            log.error("Unable to open serial device.")
+            log.error("Unable to connect to serial device.")
         return self.success
 
     def disconnect(self):
