@@ -2,7 +2,8 @@
 
 import urwid
 from urwid import Frame, Text, Filler, AttrMap, ListBox, Divider, SimpleFocusListWalker,\
-    Button, WidgetWrap, Pile, ExitMainLoop, Columns, Edit, Padding, BoxAdapter
+    Button, WidgetWrap, Pile, ExitMainLoop, Columns, Edit, Padding, BoxAdapter,\
+    SimpleListWalker
 from functools import partial
 import logging as log
 import re
@@ -56,6 +57,16 @@ class Window(urwid.WidgetWrap):
         else:
             return super().keypress(size, key)
 
+class ScrollingListBox(ListBox):
+    def render(self, size, focus=False):
+        cols, rows = size
+        while len(self.body) > 2*rows+1:
+            self.body.pop(0)
+        l = len(self.body)
+        if l > 0:
+            self.body.set_focus(l-1)
+        return super().render(size, focus)
+
 class LogWindow(Window):
     def __init__(self, tui):
         super().__init__(tui)
@@ -63,38 +74,34 @@ class LogWindow(Window):
         self.body.contents.append((Divider(), ('pack', None)))
 
         self.walker = SimpleFocusListWalker([])
-        listbox = ListBox(self.walker)
-        self.body.contents.append((listbox, ('weight', 1)))
+        self.listbox = ScrollingListBox(self.walker)
+        self.body.contents.append((self.listbox, ('weight', 1)))
         self.body.focus_position = 2
-        self.log_messages = []
         #self.add_hotkey('-', self.update, "increase")
         #self.add_hotkey('+', self.update, "decrease")
         #c e w i d
         self.update()
 
-    def populate_list(self):
-        self.walker.clear()
-        for line in reversed(self.log_messages):
-            if line.startswith('CRITICAL'):
-                focusmap = 'critical'
-            elif line.startswith('ERROR'):
-                focusmap = 'error'
-            elif line.startswith('WARNING'):
-                focusmap = 'warning'
-            elif line.startswith('INFO'):
-                focusmap = 'info'
-            else:
-                focusmap = 'default'
+    def wrap(self, line):
+        if line.startswith('CRITICAL'):
+            focusmap = 'critical'
+        elif line.startswith('ERROR'):
+            focusmap = 'error'
+        elif line.startswith('WARNING'):
+            focusmap = 'warning'
+        elif line.startswith('INFO'):
+            focusmap = 'info'
+        else:
+            focusmap = 'default'
 
-            txt = Text(line.strip())
-            self.walker.append(AttrMap(txt, focusmap))
+        txt = Text(line.strip())
+        return AttrMap(txt, focusmap)
 
     def update(self):
         def log_cb(lines):
-            self.log_messages.extend(lines)
-            if len(self.log_messages) > 100:
-                self.log_messages = self.log_messages[-100:]
-            self.populate_list()
+            for line in lines:
+                w = self.wrap(line)
+                self.walker.append(w)
         self.tui.controller.start_logs(log_cb)
 
     def finalize(self):
