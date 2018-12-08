@@ -70,17 +70,12 @@ class ScrollingListBox(ListBox):
 class LogWindow(Window):
     def __init__(self, tui):
         super().__init__(tui)
-        self.body.contents.append((Text(f"LOG"), ('pack', None)))
-        self.body.contents.append((Divider(), ('pack', None)))
-
         self.walker = SimpleFocusListWalker([])
         self.listbox = ScrollingListBox(self.walker)
         self.body.contents.append((self.listbox, ('weight', 1)))
-        self.body.focus_position = 2
         #self.add_hotkey('-', self.update, "increase")
         #self.add_hotkey('+', self.update, "decrease")
         #c e w i d
-        self.update()
 
     def wrap(self, line):
         if line.startswith('CRITICAL'):
@@ -97,14 +92,15 @@ class LogWindow(Window):
         txt = Text(line.strip())
         return AttrMap(txt, focusmap)
 
-    def update(self):
+    def start(self):
+        self.walker.append(Text("---- START LOGGING ----", align='center'))
         def log_cb(lines):
             for line in lines:
                 w = self.wrap(line)
                 self.walker.append(w)
         self.tui.controller.start_logs(log_cb)
 
-    def finalize(self):
+    def stop(self):
         self.tui.controller.stop_logs()
 
 class CB_Edit(Edit):
@@ -303,14 +299,17 @@ class Tui():
         self.mainloop = urwid.MainLoop(window, palette,
                 unhandled_input=self._unhandled_input, event_loop=evl)
 
+        self.logwindow = LogWindow(self)
+
     def toggle_log(self):
         if type(self.mainloop.widget) != Columns:
-            columns = Columns([self.mainloop.widget, LogWindow(self)], 1)
+            columns = Columns([self.mainloop.widget, self.logwindow], 1)
             self.mainloop.widget = columns
+            self.logwindow.start()
         else:
             window = self.mainloop.widget[0]
             logwindow = self.mainloop.widget[1]
-            logwindow.finalize()
+            self.logwindow.stop()
             self.mainloop.widget = window
 
     def push_window(self, window):
