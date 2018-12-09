@@ -86,7 +86,7 @@ async def lsdir(dirname):
         log.critical("Path doesn't exists")
         return []
     except PermissionError as e:
-        log.error(f"No permission to list dir. {e}")
+        log.error("No permission to list dir. {}".format(e))
         return []
     files = []
     for fn in objects:
@@ -109,13 +109,13 @@ async def devlist(gctx, cctx, lctx):
     """List configured devices"""
     devs = gctx['dev']
     for locator, device in devs.items():
-        lctx.writeln(f"\"{locator}\" \"{device.get_name()}\"")
+        lctx.writeln("\"{}\" \"{}\"".format(locator, device.get_name()))
 
 async def camlist(gctx, cctx, lctx):
     """List configured webcams"""
     webcams = gctx['webcams']
     for locator, webcam in webcams.items():
-        lctx.writeln(f"\"{locator}\" \"{webcam.name}\" \"{webcam.url}\"")
+        lctx.writeln("\"{}\" \"{}\" \"{}\"".format(locator, webcam.name, webcam.url))
 
 async def dumpconfig(gctx, cctx, lctx):
     """List configuration file"""

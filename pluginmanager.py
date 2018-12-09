@@ -13,12 +13,12 @@ class PluginManager():
         import importlib.util
 
         names = plugins_enabled.split(',')
-        paths = [f"{plugin_path}/{name}.py" for name in names]
+        paths = ["{}/{}.py".format(plugin_path, name) for name in names]
         for path in paths:
             spec = importlib.util.spec_from_file_location("module.name", path)
             plugin = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(plugin)
-            log.info(f"Loading plugin {path}")
+            log.info("Loading plugin {}".format(path))
             try:
                 instance = plugin.Plugin()
             except Exception as e:

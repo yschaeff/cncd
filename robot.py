@@ -103,10 +103,17 @@ class Device():
         paused = not self.resume_event.is_set()
         progress = ""
         total = ""
-        s = f"Connected:{c} printing:{p} Textruder:{Te}/{TSe}" + \
-            f" Tbed {Tb}/{TSb} file:\"{fprinting}\" staged:\"{fstaged}\"" + \
-            f" paused:{paused} progress:{progress}/{total}"
+
+        s  =  "connected:{}".format(c)
+        s += " printing:{}".format(p)
+        s += " Textruder:{}/{}".format(Te, TSe)
+        s += " Tbed:{}/{}".format(Tb, TSb)
+        s += " file:{}".format(fprinting)
+        s += " staged:{}".format(fstaged)
+        s += " paused:{}".format(paused)
+        s += " progress:{}/{}".format(progress, total)
         return s
+
     def send_gcode(self, gcode):
         if not self.con:
             log.error("not connected")
@@ -125,11 +132,11 @@ class Device():
             except concurrent.futures._base.CancelledError:
                 log.warning('Connect task cancelled')
             except FileNotFoundError as e:
-                log.error(f"{e}")
+                log.error(str(e))
             except serial.serialutil.SerialException as e:
-                log.error(f"{e}")
+                log.error(str(e))
             except Exception as e:
-                log.critical(f"{e}")
+                log.critical(str(e))
             else:
                 device.success = True
             finally:

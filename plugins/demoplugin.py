@@ -20,4 +20,4 @@ class Plugin(plugins.pluginskel.SkeletonPlugin):
            as new line"""
         if argv[0] == 'xxx':
             for i in range(1000000):
-                yield f"hi {i}!"
+                yield "hi {}!".format(i)

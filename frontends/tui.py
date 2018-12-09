@@ -37,17 +37,17 @@ class Window(urwid.WidgetWrap):
         errors = False
         for line in lines:
             if line.startswith("ERROR"):
-                self.footer.set_text(f"server: {line.strip()}")
+                self.footer.set_text("server: {}".format(line.strip()))
                 errors = True
             else:
                 yield line
         if not errors:
-            self.footer.set_text(f"server: OK")
+            self.footer.set_text("server: OK")
 
     def add_hotkey(self, key, func, label):
         if key not in self.hotkeys:
             self.hotkeys[key] = func
-            self.header_str += f" {key}:{label}"
+            self.header_str += " {}:{}".format(key, label)
             self.header.set_text(self.header_str)
 
     def keypress(self, size, key):
@@ -119,7 +119,7 @@ class CB_Edit(Edit):
 class FileListWindow(Window):
     def __init__(self, tui, locator, device):
         super().__init__(tui)
-        self.body.contents.append((Text(f"Select file to load on \"{device}\""), ('pack', None)))
+        self.body.contents.append((Text("Select file to load on \"{}\"".format(device)), ('pack', None)))
         self.body.contents.append((Divider(), ('pack', None)))
         self.device = device
 
@@ -176,7 +176,7 @@ class FileListWindow(Window):
 class DeviceWindow(Window):
     def __init__(self, tui, locator, device):
         super().__init__(tui)
-        self.body.contents.append((Text(f"Selected device \"{device}\""), ('pack', None)))
+        self.body.contents.append((Text("Selected device \"{}\"".format(device)), ('pack', None)))
         self.body.contents.append((Divider(), ('pack', None)))
 
         self.locator = locator

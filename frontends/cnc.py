@@ -15,7 +15,7 @@ class CncProtocol(asyncio.Protocol):
         self.data = ""
         self.gui_exception = None
     def send_message(self, message, response_handler = None, flush=False):
-        self.transport.write(f"{self.nonce} {message}\n".encode())
+        self.transport.write("{} {}\n".format(self.nonce, message).encode())
         self.waiters[self.nonce] = (response_handler, [], flush)
         self.nonce += 1
     def connection_made(self, transport):
@@ -85,63 +85,63 @@ class Controller():
     def get_status(self, gui_cb, device):
         def controller_cb(lines):
             gui_cb(lines)
-        self.protocol.send_message(f"status \"{device}\"", controller_cb)
+        self.protocol.send_message("status \"{}\"".format(device), controller_cb)
 
     def get_filelist(self, gui_cb, device):
         def controller_cb(lines):
             gui_cb(lines)
-        self.protocol.send_message(f"stat", controller_cb)
+        self.protocol.send_message("stat", controller_cb)
 
     def connect(self, gui_cb, device):
         def controller_cb(lines):
             if gui_cb:
                 gui_cb(lines)
-        self.protocol.send_message(f"connect \"{device}\"", controller_cb)
+        self.protocol.send_message("connect \"{}\"".format(device), controller_cb)
 
     def disconnect(self, gui_cb, device):
         def controller_cb(lines):
             if gui_cb:
                 gui_cb(lines)
-        self.protocol.send_message(f"disconnect \"{device}\"", controller_cb)
+        self.protocol.send_message("disconnect \"{}\"".format(device), controller_cb)
 
     def start(self, gui_cb, device):
         def controller_cb(lines):
             if gui_cb:
                 gui_cb(lines)
-        self.protocol.send_message(f"start \"{device}\"", controller_cb)
+        self.protocol.send_message("start \"{}\"".format(device), controller_cb)
 
     def stop(self, gui_cb, device):
         def controller_cb(lines):
             if gui_cb:
                 gui_cb(lines)
-        self.protocol.send_message(f"stop \"{device}\"", controller_cb)
+        self.protocol.send_message("stop \"{}\"".format(device), controller_cb)
 
     def pause(self, gui_cb, device):
         def controller_cb(lines):
             if gui_cb:
                 gui_cb(lines)
-        self.protocol.send_message(f"pause \"{device}\"", controller_cb)
+        self.protocol.send_message("pause \"{}\"".format(device), controller_cb)
 
     def resume(self, gui_cb, device):
         def controller_cb(lines):
             if gui_cb:
                 gui_cb(lines)
-        self.protocol.send_message(f"resume \"{device}\"", controller_cb)
+        self.protocol.send_message("resume \"{}\"".format(device), controller_cb)
 
     def load(self, gui_cb, device, filename):
         def controller_cb(lines):
             if gui_cb:
                 gui_cb(lines)
-        self.protocol.send_message(f"load \"{device}\" \"{filename}\"", controller_cb)
+        self.protocol.send_message("load \"{}\" \"{}\"".format(device, filename), controller_cb)
 
     def start_logs(self, gui_cb):
         def controller_cb(lines):
             if gui_cb:
                 gui_cb(lines)
-        self.protocol.send_message(f"tracelog start", controller_cb, flush=True)
+        self.protocol.send_message("tracelog start", controller_cb, flush=True)
 
     def stop_logs(self):
-        self.protocol.send_message(f"tracelog stop", flush=True)
+        self.protocol.send_message("tracelog stop", flush=True)
 
 def main(loop):
     future = loop.create_unix_connection(partial(CncProtocol), PATH)

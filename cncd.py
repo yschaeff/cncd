@@ -43,7 +43,7 @@ class SocketHandler(asyncio.Protocol):
         prop = ['peername','sockname'][transport.get_extra_info('socket').family == socket.AF_UNIX]
         src = transport.get_extra_info(prop)
         log.info('Connection from {}'.format(src))
-        transport.write(f"## cncd version 1, api version 1\n".encode())
+        transport.write("## cncd version 1, api version 1\n".encode())
     def connection_lost(self, ex):
         log.info('Closed connection')
     def eof_received(self):
@@ -118,7 +118,7 @@ def load_devices_from_cfg(gctx):
         try:
             section = cfg[device]
         except KeyError:
-            log.error(f"Can not find section {device} in configuration.")
+            log.error("Can not find section {} in configuration.".format(device))
             continue
         if device in gctx['dev']:
             gctx['dev'][device].update_cfg(section)
@@ -137,7 +137,7 @@ def load_webcams_from_cfg(gctx):
             section = cfg[camera]
             gctx['webcams'][camera] = Webcam(section['name'], section['url'])
         except KeyError:
-            log.error(f"Error in section {camera} of configuration.")
+            log.error("Error in section {} of configuration.".format(camera))
             continue
 
 def load_plugins_from_cfg(gctx):
