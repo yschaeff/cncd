@@ -1,7 +1,9 @@
 DEFAULTS = {
     'general': {
-        "port":         4000,
-        "address":      "localhost",
+        ## these are disabled because we want to prevent
+        ## users from using TCP.
+        #"port":         4000,
+        #"address":      "localhost",
         #"address":      "", ##all
         "unix_socket":  "/var/run/cncd/cncd.sock",
         "config":       "/etc/cncd.conf",

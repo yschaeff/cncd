@@ -169,11 +169,13 @@ while True:
     load_plugins_from_cfg(gctx)
 
     ##TCP
-    coro = loop.create_server(functools.partial(SocketHandler, gctx),
-            general["address"], general["port"])
-    server = loop.run_until_complete(coro)
-    gctx['srv'].append(server)
-    log.info('Serving on {}'.format(server.sockets[0].getsockname()))
+    if "address" in general and "port" in general:
+        log.critical("Gee Skipper! It looks like you are trying to open a TCP port! This is highly discouraged, for TCP provides no access control. Even opening on localhost exposes your devices to non privileged users on this system. Don't say I didn't told you so!")
+        coro = loop.create_server(functools.partial(SocketHandler, gctx),
+                general["address"], general["port"])
+        server = loop.run_until_complete(coro)
+        gctx['srv'].append(server)
+        log.info('Serving on {}'.format(server.sockets[0].getsockname()))
 
     ##UNIX
     coro = loop.create_unix_server(functools.partial(SocketHandler, gctx),
