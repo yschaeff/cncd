@@ -2,6 +2,7 @@ import logging as log
 import asyncio, functools, concurrent
 import serial
 import serial_asyncio
+import os
 
 class DummySerialConnection():
     def __init__(self, device):
@@ -71,6 +72,8 @@ class Device():
         self.printing_file = ""
         self.stop_event = asyncio.Event()
         self.resume_event = asyncio.Event()
+        self.progress = 0
+        self.filesize = 0
 
     def update_cfg(self, dev_cfg):
         self.cfg = dev_cfg
@@ -101,15 +104,15 @@ class Device():
         fstaged = self.gcodefile
         fprinting = self.printing_file
         paused = not self.resume_event.is_set()
-        progress = ""
-        total = ""
+        progress = self.progress
+        total = self.filesize
 
         s  =  "connected:{}".format(c)
         s += " printing:{}".format(p)
         s += " Textruder:{}/{}".format(Te, TSe)
         s += " Tbed:{}/{}".format(Tb, TSb)
-        s += " file:{}".format(fprinting)
-        s += " staged:{}".format(fstaged)
+        s += " file:\"{}\"".format(fprinting)
+        s += " staged:\"{}\"".format(fstaged)
         s += " paused:{}".format(paused)
         s += " progress:{}/{}".format(progress, total)
         return s
@@ -171,6 +174,7 @@ class Device():
         else:
             log.warning("Requested disconnect. But not connected.")
         return True
+
     def load_file(self, filename):
         self.gcodefile = filename
         return True
@@ -196,8 +200,11 @@ class Device():
         self.resume_event.set()
         self.is_printing = True
         self.printing_file = self.gcodefile
+        self.filesize = os.path.getsize(self.gcodefile)
+        self.progress = 0
         with open(self.gcodefile) as fd:
             for line in fd:
+                self.progress += len(line)
                 idx = line.rfind(';')
                 if idx>=0: line = line[:idx]
                 await self.send(line)

@@ -8,6 +8,7 @@ from functools import partial
 import logging as log
 import re
 import webbrowser
+import shlex
 
 palette = [('status', 'white,bold', 'dark blue'), \
         ('selected', 'black', 'white'),
@@ -56,6 +57,10 @@ class Window(urwid.WidgetWrap):
             return True
         else:
             return super().keypress(size, key)
+
+    ## subscribe / unsubscribe here
+    def start(self): pass
+    def stop(self): pass
 
 class ScrollingListBox(ListBox):
     def render(self, size, focus=False):
@@ -179,21 +184,42 @@ class DeviceWindow(Window):
         self.body.contents.append((Text("Selected device \"{}\"".format(device)), ('pack', None)))
         self.body.contents.append((Divider(), ('pack', None)))
 
+        self.statusline = Text("status")
+        self.body.contents.append((self.statusline, ('pack', None)))
+        self.body.contents.append((Divider(), ('pack', None)))
+
         self.locator = locator
         self.device = device
 
         self.walker = SimpleFocusListWalker([])
         listbox = ListBox(self.walker)
         self.body.contents.append((listbox, ('weight', 1)))
-        self.body.focus_position = 2
+        self.body.focus_position = 4
         self.add_hotkey('u', self.update, "update")
         self.update()
 
+    def start(self):
+        self.tui.controller.subscribe_status(partial(self.update_status_cb, self.statusline), self.locator)
+
+    def stop(self):
+        self.tui.controller.unsubscribe_status(None, self.locator)
+
+    def update_status_cb(self, txt_widget, lines):
+        for line in self.error_filter(lines):
+            items = shlex.split(line.strip())
+            label = "\n".join(items)
+            self.statusline.set_text(label)
+
+    def update_status(self):
+        self.tui.controller.get_status(partial(self.update_status_cb, self.statusline), self.locator)
+
     def update(self):
+        self.update_status()
         self.walker.clear()
         locator = self.locator
         def cmd_cb(lines):
             for line in self.error_filter(lines): pass
+            self.update_status()
 
         button = Button("Connect")
         def button_cb(button, locator):
@@ -327,18 +353,22 @@ class Tui():
             self.mainloop.widget = window
 
     def push_window(self, window):
+        window.start()
         rootwidget = self.mainloop.widget
         if type(rootwidget) != Columns:
+            rootwidget.stop()
             self.windowstack.append(rootwidget)
             self.mainloop.widget = window
         else:
             self.windowstack.append(rootwidget[0])
+            rootwidget[0].stop()
             rootwidget.contents[0] = (window, rootwidget.options(box_widget=True))
 
     def pop_window(self):
         if not self.windowstack: return
         window = self.windowstack.pop()
         window.update()
+        window.start()
         rootwidget = self.mainloop.widget
         if type(rootwidget) != Columns:
             self.mainloop.widget = window

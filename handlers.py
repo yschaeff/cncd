@@ -108,13 +108,13 @@ async def stat(gctx, cctx, lctx):
 async def devlist(gctx, cctx, lctx):
     """List configured devices"""
     devs = gctx['dev']
-    for locator, device in devs.items():
+    for locator, device in sorted(devs.items()):
         lctx.writeln("\"{}\" \"{}\"".format(locator, device.get_name()))
 
 async def camlist(gctx, cctx, lctx):
     """List configured webcams"""
     webcams = gctx['webcams']
-    for locator, webcam in webcams.items():
+    for locator, webcam in sorted(webcams.items()):
         lctx.writeln("\"{}\" \"{}\" \"{}\"".format(locator, webcam.name, webcam.url))
 
 async def dumpconfig(gctx, cctx, lctx):
@@ -295,6 +295,29 @@ async def tracelog(gctx, cctx, lctx):
         event = cctx['tracelog_stop_event']
         event.set()
 
+@nargs(2)
+@parse_device
+async def tracestatus(gctx, cctx, lctx, dev):
+    """args: start|stop receive server log messages"""
+    if lctx.argv[2] == 'start':
+        if 'tracestatus_stop_event' not in cctx:
+            event = asyncio.Event()
+            event.clear()
+            cctx['tracestatus_stop_event'] = event
+        else:
+            event = cctx['tracestatus_stop_event']
+        event.clear()
+        while not event.is_set():
+            lctx.writeln(dev.status())
+            await asyncio.sleep(0.5)
+    elif lctx.argv[2] == 'stop':
+        if 'tracestatus_stop_event' not in cctx:
+            return
+        event = cctx['tracestatus_stop_event']
+        event.set()
+    else:
+        lctx.writeln("ERROR")
+
 handlers = [connect, disconnect, status, load, quit, shutdown, reboot, help, 
-    devlist, camlist, loglevel, stat, gcode, tracelog,
+    devlist, camlist, loglevel, stat, gcode, tracelog, tracestatus,
     start, stop, pause, resume, dumpconfig, dumpgctx, dumpcctx, dumplctx, sleep]

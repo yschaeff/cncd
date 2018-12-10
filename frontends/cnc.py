@@ -87,6 +87,14 @@ class Controller():
             gui_cb(lines)
         self.protocol.send_message("status \"{}\"".format(device), controller_cb)
 
+    def subscribe_status(self, gui_cb, device):
+        def controller_cb(lines):
+            gui_cb(lines)
+        self.protocol.send_message("tracestatus \"{}\" start".format(device), controller_cb, flush=True)
+
+    def unsubscribe_status(self, gui_cb, device):
+        self.protocol.send_message("tracestatus \"{}\" stop".format(device))
+
     def get_filelist(self, gui_cb, device):
         def controller_cb(lines):
             gui_cb(lines)
