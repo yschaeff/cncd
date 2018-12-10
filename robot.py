@@ -169,6 +169,7 @@ class Device():
 
     def disconnect(self):
         if self.handler:
+            self.pause()
             self.handler.expect_close = True
             self.handler.close()
         else:
