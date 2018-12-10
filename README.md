@@ -5,7 +5,7 @@ likely still present.  If you are neither the Adventurous type, Python
 developer, or Commandline Masochist, your are better off leaving the project to
 mature some more.*
 
-![Logo][https://github.com/yschaeff/cncd/raw/master/logo/cncd.png]
+![Logo](https://github.com/yschaeff/cncd/raw/master/logo/cncd.png)
 
 CNCD (which stands for Computer Numerical Control Daemon) is server software
 to control CNC devices and manage them remotely. It aims to control any CNC
