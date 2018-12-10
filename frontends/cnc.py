@@ -5,6 +5,7 @@ import tui
 from functools import partial
 import logging as log
 import shlex
+import argparse
 
 PATH = '../.cncd.sock'
 
@@ -151,8 +152,8 @@ class Controller():
     def stop_logs(self):
         self.protocol.send_message("tracelog stop", flush=True)
 
-def main(loop):
-    future = loop.create_unix_connection(partial(CncProtocol), PATH)
+def main(loop, args):
+    future = loop.create_unix_connection(partial(CncProtocol), args.unix_socket)
     try:
         transport, protocol = loop.run_until_complete(future)
     except ConnectionRefusedError as e:
@@ -177,7 +178,15 @@ def main(loop):
     loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
 
 if __name__ == '__main__':
-    log.basicConfig(level=log.DEBUG)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-u", "--unix-socket", help="Path to server socket",
+            action="store", required=True)
+    parser.add_argument("-l", "--log-level",
+            choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+            type=str.upper, action="store", default='WARNING')
+    args = parser.parse_args()
+
+    log.basicConfig(level=args.log_level)
     loop = asyncio.get_event_loop()
-    main(loop)
+    main(loop, args)
     loop.close()
