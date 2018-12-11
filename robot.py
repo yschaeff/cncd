@@ -72,6 +72,7 @@ class Device():
         self.printing_file = ""
         self.stop_event = asyncio.Event()
         self.resume_event = asyncio.Event()
+        self.resume_event.set() ## start not paused
         self.progress = 0
         self.filesize = 0
 
@@ -169,7 +170,8 @@ class Device():
 
     def disconnect(self):
         if self.handler:
-            self.pause()
+            if self.is_printing:
+                self.pause()
             self.handler.expect_close = True
             self.handler.close()
         else:
@@ -212,7 +214,9 @@ class Device():
                 if not self.resume_event.is_set():
                     await self.resume_event.wait()
                 if self.stop_event.is_set():
-                    await self.replay_abort_gcode()
+                    ## do not do this if not connected
+                    if self.handler:
+                        await self.replay_abort_gcode()
                     break
 
         self.printing_file = ""
