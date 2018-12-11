@@ -298,7 +298,7 @@ async def tracelog(gctx, cctx, lctx):
 @nargs(2)
 @parse_device
 async def tracestatus(gctx, cctx, lctx, dev):
-    """args: start|stop receive server log messages"""
+    """args: start|stop receive device status messages"""
     if lctx.argv[2] == 'start':
         if 'tracestatus_stop_event' not in cctx:
             event = asyncio.Event()

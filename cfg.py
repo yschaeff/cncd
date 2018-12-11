@@ -17,6 +17,7 @@ DEFAULTS = {
 }
 
 import logging as log
+from logging.handlers import SysLogHandler
 
 def parse_args(defaults):
     from argparse import ArgumentParser
@@ -71,14 +72,19 @@ def read_config(defaults, args):
         level = getattr(log, general["log_level"].upper(), None)
         if not isinstance(level, int):
             raise ValueError('Invalid log level: %s' % level)
-        rootlogger = log.getLogger()
-        rootlogger.setLevel(level)
+        log.getLogger().setLevel(level)
 
     print_config(cfg)
     return cfg
 
 def load_configuration():
     global DEFAULTS
+
+    formatter = log.Formatter(fmt='cncd[%(process)d]: %(levelname)s: %(message)s')
+    syslog_handler = SysLogHandler(address='/dev/log', facility='daemon')
+    syslog_handler.setFormatter(formatter)
+    log.getLogger().addHandler(syslog_handler)
+
     args = parse_args(DEFAULTS)
     return read_config(DEFAULTS, args)
 
