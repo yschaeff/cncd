@@ -9,14 +9,19 @@ import logging as log
 import re
 import webbrowser
 import shlex
+from collections import defaultdict
 
 palette = [('status', 'white,bold', 'dark blue'), \
         ('selected', 'black', 'white'),
+
         ('default', 'dark cyan', 'black'),
         ('info', 'white', 'black'),
         ('warning', 'yellow', 'black'),
         ('error', 'light red', 'black'),
-        ('critical', 'white', 'dark red')]
+        ('critical', 'white', 'dark red'),
+
+        ('Tlabel', 'yellow', 'black'),
+        ('Flabel', 'white', 'black')]
 
 class Window(urwid.WidgetWrap):
     def __init__(self, tui):
@@ -184,8 +189,8 @@ class DeviceWindow(Window):
         self.body.contents.append((Text("Selected device \"{}\"".format(device)), ('pack', None)))
         self.body.contents.append((Divider(), ('pack', None)))
 
-        self.statusline = Text("status")
-        self.body.contents.append((self.statusline, ('pack', None)))
+        self.statuswidget = Pile([])
+        self.body.contents.append((self.statuswidget, ('pack', None)))
         self.body.contents.append((Divider(), ('pack', None)))
 
         self.locator = locator
@@ -199,19 +204,63 @@ class DeviceWindow(Window):
         self.update()
 
     def start(self):
-        self.tui.controller.subscribe_status(partial(self.update_status_cb, self.statusline), self.locator)
+        self.tui.controller.subscribe_status(partial(self.update_status_cb, self.statuswidget), self.locator)
 
     def stop(self):
         self.tui.controller.unsubscribe_status(None, self.locator)
 
-    def update_status_cb(self, txt_widget, lines):
+    def update_status_cb(self, container, lines):
+        status = defaultdict(str)
         for line in self.error_filter(lines):
-            items = shlex.split(line.strip())
-            label = "\n".join(items)
-            self.statusline.set_text(label)
+            chunks = shlex.split(line.strip())
+            for item in chunks:
+                i = item.find(':')
+                if i == -1: continue
+                key = item[:i]
+                value = item[i+1:]
+                status[key] = value
+
+        def make_w(container, key, Tlabel, Flabel):
+            if status[key] == 'True':
+                label = "[{}]".format(Tlabel)
+                attr = 'Tlabel'
+            else:
+                label = "[{}]".format(Flabel)
+                attr = 'Flabel'
+            w = AttrMap(Text(label), attr, attr)
+            container.contents.append((w, container.options('pack')))
+        # We really not to properly parse this to some truct first
+        container.contents.clear()
+        stat_cols = Columns([], 0)
+        w = make_w(stat_cols, 'connected', 'connected', 'disconnected')
+        w = make_w(stat_cols, 'printing', 'active', 'idle')
+        w = make_w(stat_cols, 'paused', 'paused', 'operating')
+        container.contents.append((stat_cols, container.options('pack')))
+        txt = Text("file printing: \"{}\"".format(status['file']))
+        container.contents.append((txt, container.options('pack')))
+        txt = Text("file selected: \"{}\"".format(status['staged']))
+        container.contents.append((txt, container.options('pack')))
+        txt = Text("Textruder {}".format(status['Textruder']))
+        container.contents.append((txt, container.options('pack')))
+        txt = Text("Tbed {}".format(status['Tbed']))
+        container.contents.append((txt, container.options('pack')))
+
+        try:
+            prog = status['progress'].split('/')
+            p = int(prog[0])
+            t = int(prog[1])
+            if t:
+                perc = (p/t)*100
+            else:
+                perc = 0
+            txt = Text("progress: {} ({:0.2f}%)".format(status['progress'], perc))
+            container.contents.append((txt, container.options('pack')))
+        except:
+            ## you should be qshamed of yourself!
+            pass
 
     def update_status(self):
-        self.tui.controller.get_status(partial(self.update_status_cb, self.statusline), self.locator)
+        self.tui.controller.get_status(partial(self.update_status_cb, self.statuswidget), self.locator)
 
     def update(self):
         self.update_status()
