@@ -153,7 +153,7 @@ async def connect(gctx, cctx, lctx, dev):
 @parse_device
 async def disconnect(gctx, cctx, lctx, dev):
     """Control configured devices"""
-    if dev.disconnect():
+    if await dev.disconnect():
         lctx.writeln("OK")
     else:
         lctx.writeln("ERROR")

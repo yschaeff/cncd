@@ -1,6 +1,12 @@
 import logging as log
+from pluginmanager import Callback
 
 class SkeletonPlugin():
+    """Inherit from this class for all Plugins"""
+    name = "Skeleton"
+    #hooks = {(module, qname): [Callback(self, pre_func, post_func)]}
+    hooks = {}
+
     def __init__(self):
         pass
 

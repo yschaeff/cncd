@@ -3,6 +3,7 @@ import asyncio, functools, concurrent
 import serial
 import serial_asyncio
 import os
+from pluginmanager import plugin_hook
 
 class DummySerialConnection():
     def __init__(self, device):
@@ -128,6 +129,7 @@ class Device():
         log.debug(l)
         return True
 
+    @plugin_hook
     async def connect(self):
         ## create serial server:
         def done_cb(event, device, future):
@@ -168,7 +170,8 @@ class Device():
             log.error("Unable to connect to serial device.")
         return self.success
 
-    def disconnect(self):
+    @plugin_hook
+    async def disconnect(self):
         if self.handler:
             if self.is_printing:
                 self.pause()

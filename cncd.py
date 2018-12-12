@@ -25,6 +25,7 @@ def done_cb(gctx, cctx, lctx, future):
         lctx.writeln('Task preemptively cancelled')
     except Exception as e:
         log.exception('Unexpected error')
+        print(traceback.format_exc())
         lctx.writeln("ERROR Server side exception: {}".format(str(e)))
         loop = asyncio.get_event_loop()
         loop.stop()

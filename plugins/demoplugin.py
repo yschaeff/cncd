@@ -8,6 +8,7 @@ import plugins.pluginskel
 ## unload misbehavinf plugins
 
 class Plugin(plugins.pluginskel.SkeletonPlugin):
+    
     def handles_command(self, cmd):
         if cmd == 'xxx':
             log.info("handled")
