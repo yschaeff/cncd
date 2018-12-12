@@ -46,31 +46,47 @@ HOWTO
 
 Download at https://www.raspberrypi.org/downloads/raspbian/
 
+## @local
 unzip
-dd
-
-## Attach screen and login (pi/raspberry)
-sudo useradd -m yuri -s /bin/bash
-sudo usermod -aG sudo yuri
-sudo passwd yuri
-sudo apt update
-sudo apt install ssh
+dd if=debian,img of=/dev/sdX
+## @pi (attach a screen & keyboard)
 sudo systemctl enable ssh.service
 sudo systemctl start ssh.service
-ip addr
-logout
-
-## on remote system
+exit
+## @local
+ssh pi@10.0.0.29
+    sudo useradd -m -G sudo -s /bin/bash yuri
+    sudo passwd yuri
+    sudo reboot
+ssh yuri@10.0.0.29
+    sudo userdel -r pi
+    exit
 ssh-copy-id yuri@10.0.0.29
 ssh yuri@10.0.0.29
-sudo userdel -r pi
-sudo vi /etc/ssh/sshd_config
-    <<< PasswordAuthentication no
-    >>> #PasswordAuthentication yes
-sudo useradd -r -m -G tty -s /bin/bash cnc
-sudo cp -r .ssh/ ~cnc/
-sudo chown -R cnc:cnc ~cnc/.ssh/
-sudo apt-install git
+    sudo vi /etc/ssh/sshd_config
+        <<< PasswordAuthentication no
+        >>> #PasswordAuthentication yes
+    sudo useradd -r -m -G tty -s /bin/bash cnc
+    sudo cp -r .ssh/ ~cnc/
+    sudo chown -R cnc:cnc ~cnc/.ssh/
+    sudo apt update
+    sudo apt upgrade
+    sudo apt install git, python3-pip, python3-serial
+    sudo pip3 install pyserial-asyncio
+
+    sudo cp cncd.service /etc/systemd/system/
+    sudo cp cncd.conf /etc/
+    sudo systemctl enable cncd
+ssh cnc@10.0.0.29
+    git clone https://github.com/yschaeff/cncd.git cncd
+    mkdir run gcode
+    <edit cncd.conf>
+    
+    ./cncd.py -c cncd.conf -l debug -L
+
+ssh -L ./remotesock:/home/cncd/.cncd.sock -M cnc@10.0.0.29
+
+
 
 ## on remote system
 ssh cnc@10.0.0.29
