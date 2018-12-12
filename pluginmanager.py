@@ -18,7 +18,7 @@ def plugin_hook(func):
             if not hook.callback: continue
             log.debug("Function {} was pre hooked by {}".format(qname, hook.plugin.NAME))
             try:
-                await hook.callback(module, qname, *args, **kwargs)
+                await hook.callback(*args, **kwargs)
             except Exception as e:
                 log.error("plugin '{}' crashed.".format(hook.plugin.NAME))
                 log.error(traceback.format_exc())
@@ -27,7 +27,7 @@ def plugin_hook(func):
             if not hook.callback: continue
             log.debug("Function {} was post hooked by {}".format(qname, hook.plugin.NAME))
             try:
-                await hook.callback(module, qname, *args, **kwargs)
+                await hook.callback(*args, **kwargs)
             except Exception as e:
                 log.error("plugin '{}' crashed.".format(hook.plugin.NAME))
                 log.error(traceback.format_exc())
