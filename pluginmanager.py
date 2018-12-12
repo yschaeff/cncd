@@ -3,7 +3,7 @@ import functools
 import traceback
 from collections import defaultdict, namedtuple
 
-Callback = namedtuple('Callback', 'module pre_callback post_callback')
+Callback = namedtuple('Callback', 'plugin callback')
 
 pluginmanager = None
 
@@ -13,20 +13,24 @@ def plugin_hook(func):
     async def wrapper(*args, **kwargs):
         qname = func.__qualname__
         module = func.__module__
-        hooks = pluginmanager.hooks_for(module, qname)
-        for hook in hooks:
-            if not hook.pre_callback: continue
-            log.debug("Function {} was pre hooked by {}".format(qname, hook.module.NAME))
+        prehooks, posthooks = pluginmanager.hooks_for(module, qname)
+        for hook in prehooks:
+            if not hook.callback: continue
+            log.debug("Function {} was pre hooked by {}".format(qname, hook.plugin.NAME))
             try:
-                await hook.pre_callback(module, qname, *args, **kwargs)
+                await hook.callback(module, qname, *args, **kwargs)
             except Exception as e:
-                log.error("plugin '{}' crashed.".format(hook.module.NAME))
+                log.error("plugin '{}' crashed.".format(hook.plugin.NAME))
                 log.error(traceback.format_exc())
         r = await func(*args, **kwargs)
-        for hook in hooks:
-            if not hook.post_callback: continue
-            log.debug("Function {} was post hooked by {}".format(qname, hook.module.NAME))
-            await hook.post_callback(module, qname, *args, **kwargs)
+        for hook in posthooks:
+            if not hook.callback: continue
+            log.debug("Function {} was post hooked by {}".format(qname, hook.plugin.NAME))
+            try:
+                await hook.callback(module, qname, *args, **kwargs)
+            except Exception as e:
+                log.error("plugin '{}' crashed.".format(hook.plugin.NAME))
+                log.error(traceback.format_exc())
         return r
     return wrapper
 
@@ -35,14 +39,19 @@ class PluginManager():
         global pluginmanager
         pluginmanager = self
         self.gctx = gctx
-        self.hooks = defaultdict(list)
+        self.prehooks = defaultdict(list)
+        self.posthooks = defaultdict(list)
 
     def hooks_for(self, module, qname):
-        return self.hooks[(module, qname)]
+        return self.prehooks[(module, qname)], self.posthooks[(module, qname)]
 
-    def collect_hooks(self, hooks):
-        for target, hooks in hooks.items():
-            self.hooks[target].extend(hooks)
+    def collect_hooks(self, instance):
+        for target, callbacks in instance.PREHOOKS.items():
+            hooks = [Callback(instance, callback) for callback in callbacks]
+            self.prehooks[target].extend(hooks)
+        for target, callbacks in instance.POSTHOOKS.items():
+            hooks = [Callback(instance, callback) for callback in callbacks]
+            self.posthooks[target].extend(hooks)
 
     def load_plugins(self):
         general = self.gctx['cfg']["general"]
@@ -65,7 +74,7 @@ class PluginManager():
                 log.error(traceback.format_exc())
                 continue
             self.gctx["plugins"].append(instance)
-            self.collect_hooks(instance.HOOKS)
+            self.collect_hooks(instance)
 
     def unload_plugins(self):
         for plugin in self.gctx["plugins"]:

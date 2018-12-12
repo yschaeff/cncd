@@ -51,8 +51,7 @@ async def last_resort(gctx, cctx, lctx):
     plugins = gctx["plugins"]
     for plugin in plugins:
         try:
-            handles = plugin.handles_command(lctx.argv[0])
-            if not handles: continue
+            if not lctx.argv[0] in plugin.HANDLES: continue
             for line in plugin.handle_command(lctx.argv, gctx, cctx, lctx):
                 transport = cctx['transport']
                 if transport.is_closing(): return
@@ -246,6 +245,11 @@ async def help(gctx, cctx, lctx):
     lctx.writeln("COMMANDS:")
     for f in handlers:
         lctx.writeln(" {:<10}: {}".format(f.__name__, f.__doc__))
+    lctx.writeln("PLUGIN COMMANDS:")
+    plugins = gctx["plugins"]
+    for plugin in plugins:
+        for handler in plugin.HANDLES:
+            lctx.writeln(" {:<10}: {}".format(handler, "no doc"))
 
 async def loglevel(gctx, cctx, lctx):
     """Show or set log level"""
