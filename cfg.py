@@ -24,6 +24,7 @@ def parse_args(defaults):
     general = defaults['general']
     parser = ArgumentParser()
     parser.add_argument("-v", "--version", action="store_true")
+    parser.add_argument("-L", "--log-to-stdout", action="store_true")
     parser.add_argument("-c", "--config", help="Alternative configuration file",
             action="store")
     parser.add_argument("-l", "--log-level",
@@ -80,11 +81,13 @@ def read_config(defaults, args):
 def load_configuration():
     global DEFAULTS
 
+    args = parse_args(DEFAULTS)
+    if args.log_to_stdout:
+        log.basicConfig()
+
     formatter = log.Formatter(fmt='cncd[%(process)d]: %(levelname)s: %(message)s')
     syslog_handler = SysLogHandler(address='/dev/log', facility='daemon')
     syslog_handler.setFormatter(formatter)
     log.getLogger().addHandler(syslog_handler)
-
-    args = parse_args(DEFAULTS)
     return read_config(DEFAULTS, args)
 
