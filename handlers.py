@@ -55,10 +55,10 @@ async def last_resort(gctx, cctx, lctx):
             if not handles: continue
             for line in plugin.handle_command(lctx.argv, gctx, cctx, lctx):
                 transport = cctx['transport']
-                if transport .is_closing(): return
+                if transport.is_closing(): return
                 lctx.writeln(line)
-                await asyncio.sleep(0)
-            return #first come first serve, do not allow others to hijack
+                await asyncio.sleep(0) ## force cooperative multitasking
+            return #first come first serve, do not allow others to handle this command as well
         except Exception as e:
             log.error("Plugin crashed. Disabling plugin until restart.")
             log.error(traceback.format_exc())

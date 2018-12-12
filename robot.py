@@ -74,8 +74,6 @@ class Device():
         self.stop_event = asyncio.Event()
         self.resume_event = asyncio.Event()
         self.resume_event.set() ## start not paused
-        self.progress = 0
-        self.filesize = 0
 
     def update_cfg(self, dev_cfg):
         self.cfg = dev_cfg
@@ -106,8 +104,6 @@ class Device():
         fstaged = self.gcodefile
         fprinting = self.printing_file
         paused = not self.resume_event.is_set()
-        progress = self.progress
-        total = self.filesize
 
         s  =  "connected:{}".format(c)
         s += " printing:{}".format(p)
@@ -116,7 +112,6 @@ class Device():
         s += " file:\"{}\"".format(fprinting)
         s += " staged:\"{}\"".format(fstaged)
         s += " paused:{}".format(paused)
-        s += " progress:{}/{}".format(progress, total)
         return s
 
     def send_gcode(self, gcode):
@@ -201,16 +196,22 @@ class Device():
             for gcode in gcodes.split(';'):
                 await self.send(gcode)
 
+    @plugin_hook
+    async def gcode_readline_hook(self, line):
+        return line
+
+    @plugin_hook
+    async def gcode_open_hook(self, filename):
+        return filename
+
     async def replay_gcode(self):
         self.stop_event.clear()
         self.resume_event.set()
         self.is_printing = True
         self.printing_file = self.gcodefile
-        self.filesize = os.path.getsize(self.gcodefile)
-        self.progress = 0
-        with open(self.gcodefile) as fd:
+        with open(await self.gcode_open_hook(self.gcodefile)) as fd:
             for line in fd:
-                self.progress += len(line)
+                line = await self.gcode_readline_hook(line)
                 idx = line.rfind(';')
                 if idx>=0: line = line[:idx]
                 await self.send(line)

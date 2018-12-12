@@ -16,12 +16,16 @@ def plugin_hook(func):
         hooks = pluginmanager.hooks_for(module, qname)
         for hook in hooks:
             if not hook.pre_callback: continue
-            log.debug("Function {} was pre hooked by {}".format(qname, hook.module.name))
-            await hook.pre_callback(module, qname, *args, **kwargs)
+            log.debug("Function {} was pre hooked by {}".format(qname, hook.module.NAME))
+            try:
+                await hook.pre_callback(module, qname, *args, **kwargs)
+            except Exception as e:
+                log.error("plugin '{}' crashed.".format(hook.module.NAME))
+                log.error(traceback.format_exc())
         r = await func(*args, **kwargs)
         for hook in hooks:
             if not hook.post_callback: continue
-            log.debug("Function {} was post hooked by {}".format(qname, hook.module.name))
+            log.debug("Function {} was post hooked by {}".format(qname, hook.module.NAME))
             await hook.post_callback(module, qname, *args, **kwargs)
         return r
     return wrapper
@@ -55,13 +59,13 @@ class PluginManager():
             spec.loader.exec_module(plugin)
             log.info("Loading plugin {}".format(path))
             try:
-                instance = plugin.Plugin()
+                instance = plugin.Plugin(self.gctx)
             except Exception as e:
                 log.error("Plugin crashed during loading. Not activated.")
                 log.error(traceback.format_exc())
                 continue
             self.gctx["plugins"].append(instance)
-            self.collect_hooks(instance.hooks)
+            self.collect_hooks(instance.HOOKS)
 
     def unload_plugins(self):
         for plugin in self.gctx["plugins"]:

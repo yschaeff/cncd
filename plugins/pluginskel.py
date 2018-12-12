@@ -3,11 +3,11 @@ from pluginmanager import Callback
 
 class SkeletonPlugin():
     """Inherit from this class for all Plugins"""
-    name = "Skeleton"
-    #hooks = {(module, qname): [Callback(self, pre_func, post_func)]}
-    hooks = {}
+    NAME = "Skeleton"
+    HOOKS = {}
+    PLUGIN_API_VERSION = 0
 
-    def __init__(self):
+    def __init__(self, gctx):
         pass
 
     def handles_command(self, cmd):
