@@ -186,6 +186,15 @@ async def start(gctx, cctx, lctx, dev):
 
 @nargs(2)
 @parse_device
+async def abort(gctx, cctx, lctx, dev):
+    """abort executing gcode, also works when device is blocked"""
+    if await dev.abort():
+        lctx.writeln("OK")
+    else:
+        lctx.writeln("ERROR")
+
+@nargs(2)
+@parse_device
 async def stop(gctx, cctx, lctx, dev):
     """stop executing gcode"""
     if await dev.stop():
@@ -324,4 +333,4 @@ async def tracestatus(gctx, cctx, lctx, dev):
 
 handlers = [connect, disconnect, status, load, quit, shutdown, reboot, help, 
     devlist, camlist, loglevel, stat, gcode, tracelog, tracestatus,
-    start, stop, pause, resume, dumpconfig, dumpgctx, dumpcctx, dumplctx, sleep]
+    start, stop, abort, pause, resume, dumpconfig, dumpgctx, dumpcctx, dumplctx, sleep]

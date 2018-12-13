@@ -291,19 +291,26 @@ class DeviceWindow(Window):
         self.walker.append(AttrMap(button, None, focus_map='selected'))
         self.add_hotkey('s', partial(button_cb, button, locator), "start")
 
-        button = Button("[A] Abort")
+        button = Button("[S] Stop")
         def button_cb(button, locator):
             self.tui.controller.stop(cmd_cb, locator)
         urwid.connect_signal(button, 'click', button_cb, locator)
         self.walker.append(AttrMap(button, None, focus_map='selected'))
-        self.add_hotkey('A', partial(button_cb, button, locator), "abort")
+        self.add_hotkey('S', partial(button_cb, button, locator), "stop")
 
-        button = Button("[P] Pause")
+        button = Button("[!] Abort")
+        def button_cb(button, locator):
+            self.tui.controller.abort(cmd_cb, locator)
+        urwid.connect_signal(button, 'click', button_cb, locator)
+        self.walker.append(AttrMap(button, None, focus_map='selected'))
+        self.add_hotkey('!', partial(button_cb, button, locator), "abort")
+
+        button = Button("[p] Pause")
         def button_cb(button, locator):
             self.tui.controller.pause(cmd_cb, locator)
         urwid.connect_signal(button, 'click', button_cb, locator)
         self.walker.append(AttrMap(button, None, focus_map='selected'))
-        self.add_hotkey('P', partial(button_cb, button, locator), "pause")
+        self.add_hotkey('p', partial(button_cb, button, locator), "pause")
 
         button = Button("[r] Resume")
         def button_cb(button, locator):

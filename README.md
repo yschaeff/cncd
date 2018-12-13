@@ -66,12 +66,12 @@ ssh yuri@10.0.0.29
     sudo vi /etc/ssh/sshd_config
         <<< PasswordAuthentication no
         >>> #PasswordAuthentication yes
-    sudo useradd -r -m -G tty -s /bin/bash cnc
+    sudo useradd -r -m -G dialout -s /bin/bash cnc
     sudo cp -r .ssh/ ~cnc/
     sudo chown -R cnc:cnc ~cnc/.ssh/
     sudo apt update
     sudo apt upgrade
-    sudo apt install git, python3-pip, python3-serial
+    sudo apt install git python3-pip python3-serial vim python3-rpi.gpio
     sudo pip3 install pyserial-asyncio
 
     sudo cp cncd.service /etc/systemd/system/
@@ -84,7 +84,8 @@ ssh cnc@10.0.0.29
     
     ./cncd.py -c cncd.conf -l debug -L
 
-ssh -L ./remotesock:/home/cncd/.cncd.sock -M cnc@10.0.0.29
+ssh -L ./remotesock:/var/run/cncd/cncd.sock -M cnc@10.0.0.29
+rsync -rav gcode/ cnc@10.0.0.29:~/gcode
 
 
 

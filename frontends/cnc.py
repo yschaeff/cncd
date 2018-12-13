@@ -119,6 +119,12 @@ class Controller():
                 gui_cb(lines)
         self.protocol.send_message("start \"{}\"".format(device), controller_cb)
 
+    def abort(self, gui_cb, device):
+        def controller_cb(lines):
+            if gui_cb:
+                gui_cb(lines)
+        self.protocol.send_message("abort \"{}\"".format(device), controller_cb)
+
     def stop(self, gui_cb, device):
         def controller_cb(lines):
             if gui_cb:

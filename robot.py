@@ -73,6 +73,7 @@ class Device():
         self.printing_file = ""
         self.stop_event = asyncio.Event()
         self.resume_event = asyncio.Event()
+        self.response_event = asyncio.Event()
         self.resume_event.set() ## start not paused
 
     def update_cfg(self, dev_cfg):
@@ -113,16 +114,6 @@ class Device():
         s += " staged:\"{}\"".format(fstaged)
         s += " paused:{}".format(paused)
         return s
-
-    def send_gcode(self, gcode):
-        if not self.con:
-            log.error("not connected")
-            return False
-        self.con.write(gcode.encode())
-        self.con.write('\n'.encode())
-        l = self.con.read(1)
-        log.debug(l)
-        return True
 
     @plugin_hook
     async def connect(self):
@@ -168,10 +159,11 @@ class Device():
     @plugin_hook
     async def disconnect(self):
         if self.handler:
-            if self.is_printing:
-                self.pause()
+            self.resume()
             self.handler.expect_close = True
             self.handler.close()
+            self.response_event.set()
+            self.stop_event.set()
         else:
             log.warning("Requested disconnect. But not connected.")
         return True
@@ -180,21 +172,34 @@ class Device():
         self.gcodefile = filename
         return True
 
-    async def send(self, gcode):
+    async def send(self, gcode, wait_for_ack=True):
         gcode = gcode.strip()
         if not gcode: return
         log.debug("command {}: '{}'".format(self.cfg['name'], gcode))
         self.handler.write((gcode+'\n').encode())
         ## wait for response
-        await self.response_event.wait()
-        self.response_event.clear()
+        if wait_for_ack:
+            log.debug("Waiting for device to acknowledge GCODE.")
+            await self.response_event.wait()
+            log.debug("Ack!")
+            self.response_event.clear()
 
     async def replay_abort_gcode(self):
         log.warning("Print job aborted.")
-        if 'abort_gcodes' in self.cfg:
-            gcodes = self.cfg['abort_gcodes']
-            for gcode in gcodes.split(';'):
-                await self.send(gcode)
+        if self.forceful_stop:
+            if 'abort_gcodes' in self.cfg:
+                gcodes = self.cfg['abort_gcodes']
+                for gcode in gcodes.split(';'):
+                    log.debug("Sending GCODE: \"{}\"".format(gcode))
+                    await self.send(gcode, wait_for_ack=False)
+            await self.disconnect()
+        else:
+            if 'stop_gcodes' in self.cfg:
+                gcodes = self.cfg['stop_gcodes']
+                for gcode in gcodes.split(';'):
+                    if self.forceful_stop: break
+                    log.debug("Sending GCODE: \"{}\"".format(gcode))
+                    await self.send(gcode)
 
     @plugin_hook
     async def gcode_readline_hook(self, line):
@@ -209,6 +214,7 @@ class Device():
         self.resume_event.set()
         self.is_printing = True
         self.printing_file = self.gcodefile
+        self.forceful_stop = False
         with open(await self.gcode_open_hook(self.gcodefile)) as fd:
             for line in fd:
                 line = await self.gcode_readline_hook(line)
@@ -216,14 +222,19 @@ class Device():
                 if idx>=0: line = line[:idx]
                 await self.send(line)
                 if not self.resume_event.is_set():
+                    log.debug("Device paused. Waiting for resume.")
                     await self.resume_event.wait()
+
                 if self.stop_event.is_set():
+                    log.debug("We need to stop")
                     ## do not do this if not connected
                     if self.handler:
+                        log.debug("emergency gcode")
                         await self.replay_abort_gcode()
                     break
 
         self.printing_file = ""
+        log.debug("Print job stopped.")
         self.is_printing = False
 
     async def start(self): ## rename print file?
@@ -244,8 +255,16 @@ class Device():
         self.resume_event.set()
         return True
 
+    async def abort(self):
+        self.forceful_stop = True
+        await self.stop()
+        ## pretend the device acknowledged so we can continue sending the abort.
+        self.response_event.set()
+
     async def stop(self):
+        ## make sure the device will stop
         self.stop_event.set()
+        ## unpause
         self.resume()
         return True
 
