@@ -66,7 +66,7 @@ ssh yuri@10.0.0.29
     sudo vi /etc/ssh/sshd_config
         <<< PasswordAuthentication no
         >>> #PasswordAuthentication yes
-    sudo useradd -r -m -G dialout -s /bin/bash cnc
+    sudo useradd -r -m -G dialout,gpio -s /bin/bash cnc
     sudo cp -r .ssh/ ~cnc/
     sudo chown -R cnc:cnc ~cnc/.ssh/
     sudo apt update

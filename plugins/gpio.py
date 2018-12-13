@@ -26,9 +26,12 @@ class Plugin(SkeletonPlugin):
             yield "ERROR Can't parse pin number"
             return
         if len(argv) < 3:
-            GPIO.setup(RELAY, GPIO.IN)
-            state = GPIO.input(pin)
-            yield "{}:{}".format(pin, state)
+            try:
+                GPIO.setup(pin, GPIO.IN)
+                state = GPIO.input(pin)
+                yield "{}:{}".format(pin, state)
+            except ValueError:
+                yield "invalid pin number"
             return
         try:
             value = int(argv[2])
@@ -36,7 +39,10 @@ class Plugin(SkeletonPlugin):
             yield "ERROR Can't parse value"
             return
         state = [GPIO.HIGH, GPIO.LOW][not value]
-        GPIO.setup(pin, GPIO.OUT, initial=state)
+        try:
+            GPIO.setup(pin, GPIO.OUT, initial=state)
+        except ValueError:
+            yield "invalid pin number"
 
     def close(self) -> None:
         GPIO.cleanup()
