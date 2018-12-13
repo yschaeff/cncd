@@ -1,0 +1,5 @@
+# get this information with
+# lsusb
+# udevadm info -a -n /dev/ttyACM0
+# cp <this file> /etc/udev/rules.d/99-usb-serial.rules
+SUBSYSTEM=="tty", ATTRS{idVendor}=="10c4", ATTRS{idProduct}=="ea60", ATTRS{serial}=="00492F60", SYMLINK+="ttySLAB0"

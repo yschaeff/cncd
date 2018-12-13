@@ -21,6 +21,7 @@ class Handler:
         return self.cb.__name__.startswith(argv[0])
 
 def done_cb(gctx, cctx, lctx, future):
+    global CLEAN_EXIT
     try:
         r = future.result()
     except concurrent.futures._base.CancelledError:

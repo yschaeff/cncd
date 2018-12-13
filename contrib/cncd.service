@@ -10,6 +10,8 @@ User=cnc
 Group=cnc
 ## We need systemd to create /var/run/cncd/ for us
 RuntimeDirectory=cncd
+Restart=on-failure
+RestartSec=3
 
 [Install]
 WantedBy=multi-user.target
