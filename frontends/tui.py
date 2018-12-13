@@ -291,14 +291,14 @@ class DeviceWindow(Window):
         self.walker.append(AttrMap(button, None, focus_map='selected'))
         self.add_hotkey('s', partial(button_cb, button, locator), "start")
 
-        button = Button("[S] Stop")
+        button = Button("[S] Stop (ask nicely to stop)")
         def button_cb(button, locator):
             self.tui.controller.stop(cmd_cb, locator)
         urwid.connect_signal(button, 'click', button_cb, locator)
         self.walker.append(AttrMap(button, None, focus_map='selected'))
         self.add_hotkey('S', partial(button_cb, button, locator), "stop")
 
-        button = Button("[!] Abort")
+        button = Button("[!] Abort (Interrupt then disconnect)")
         def button_cb(button, locator):
             self.tui.controller.abort(cmd_cb, locator)
         urwid.connect_signal(button, 'click', button_cb, locator)
