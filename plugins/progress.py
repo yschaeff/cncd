@@ -2,6 +2,7 @@ import logging as log
 from plugins.pluginskel import SkeletonPlugin
 import os
 from collections import defaultdict
+from time import time
 
 ## Keeps track of the progress in de gcode file
 ## This plugin should be a model to other plugins and will therefore have
@@ -54,8 +55,10 @@ class Plugin(SkeletonPlugin):
             def __init__(self):
                 self.progress = 0
                 self.total = 0
+                self.starttime = 0
             def __repr__(self):
-                return "{}/{}".format(self.progress, self.total)
+                now = time()
+                return "{}/{} {}/{}".format(self.progress, self.total, self.starttime, now)
         self.devices = defaultdict(Progress)
 
 
@@ -66,7 +69,9 @@ class Plugin(SkeletonPlugin):
     ## control back to the scheduler for a bit.
     async def open_cb(self, *args, **kwargs) -> None:
         device, filename = args
-        self.devices[device].total = os.path.getsize(filename)
+        p = self.devices[device]
+        p.total = os.path.getsize(filename)
+        p.starttime = time()
 
     async def readline_cb(self, *args, **kwargs) -> None:
         device, line = args
