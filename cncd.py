@@ -9,6 +9,8 @@ from pluginmanager import PluginManager
 import serial_asyncio
 import os, socket, traceback
 
+CLEAN_EXIT = True
+
 class Handler:
     def __init__(self, cb):
         self.cb = cb
@@ -28,6 +30,7 @@ def done_cb(gctx, cctx, lctx, future):
         print(traceback.format_exc())
         lctx.writeln("ERROR Server side exception: {}".format(str(e)))
         loop = asyncio.get_event_loop()
+        CLEAN_EXIT = False
         loop.stop()
     lctx.writeln('.')
 
@@ -207,3 +210,5 @@ for task in pending: task.cancel()
 loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
 
 loop.close()
+if not CLEAN_EXIT:
+    exit(1)
