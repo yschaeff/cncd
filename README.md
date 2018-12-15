@@ -159,9 +159,9 @@ letter. It is just how I would do it, roughly. Please consider them carefully.
     - mkdir gcode
     - exit
 - Configure CNCD
-  - sudo cp ~/cnc/cncd/contrib/cncd.service /etc/systemd/system/
-  - sudo cp ~/cnc/cncd/contrib/99-usb-serial.rules /etc/udev/rules.d/
-  - sudo cp ~/cnc/cncd/cncd.conf /etc/
+  - sudo cp ~cnc/cncd/contrib/cncd.service /etc/systemd/system/
+  - sudo cp ~cnc/cncd/contrib/99-usb-serial.rules /etc/udev/rules.d/
+  - sudo cp ~cnc/cncd/cncd.conf /etc/
   - edit the above 3 files to your liking, See below for my configuration.
   - sudo systemctl enable cncd
   - sudo systemctl start cncd
