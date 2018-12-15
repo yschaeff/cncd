@@ -184,52 +184,57 @@ This rule is to make sure my printer gets assigned the same TTY regardless of
 any other USB serial device connected. If you have multiple machines I highly recomment
 this. Figure out the correct setting with lsusb and udevadm
 
-> SUBSYSTEM=="tty", ATTRS{idVendor}=="2c99", ATTRS{idProduct}=="0001", ATTRS{serial}=="CZPX2017X003XK19721", SYMLINK+="ttyPRUSA_i3"
+```udev
+SUBSYSTEM=="tty", ATTRS{idVendor}=="2c99", ATTRS{idProduct}=="0001", ATTRS{serial}=="CZPX2017X003XK19721", SYMLINK+="ttyPRUSA_i3"
+```
 
 ### SYSTEMD
 
 Make sure is always runs as unprivileged user cnc and the dir /var/run/cncd/ gets
 created before start. (the cnc user is not allowed to do this itself)
 
-> [Unit]
-> Description=Computer Numerical Control Deamon
-> 
-> [Service]
-> ExecStart=/home/cnc/cncd/cncd.py
-> User=cnc
-> Group=cnc
-> RuntimeDirectory=cncd
-> Restart=on-failure
-> RestartSec=3
-> 
-> [Install]
-> WantedBy=multi-user.target
+```ini
+[Unit]
+Description=Computer Numerical Control Deamon
+
+[Service]
+ExecStart=/home/cnc/cncd/cncd.py
+User=cnc
+Group=cnc
+RuntimeDirectory=cncd
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+```
 
 ### CNCD config
 
-> [general]
-> unix_socket = /var/run/cncd/cncd.sock
-> log_level = warning
-> library = /home/cnc/gcode
-> plugin_path = /home/cnc/cncd/plugins
-> plugins_enabled = progress, gpio
-> cnc_devices = i3,dumdum
-> cameras = cam1
-> 
-> [i3]
-> name = Prusa i3 MK2s
-> port = /dev/ttyPRUSA_i3
-> baud = 115200
-> abort_gcodes = M108
-> stop_gcodes = M104 S0 ; M140 S0
-> 
-> [dumdum]
-> name = dummy printer
-> port = dummy
-> baud = 115200
-> abort_gcodes = G10;  G10
-> 
-> [cam1]
-> name = Okki
-> url = http://10.0.0.90:8080/?action=stream
+```ini
+[general]
+unix_socket = /var/run/cncd/cncd.sock
+log_level = warning
+library = /home/cnc/gcode
+plugin_path = /home/cnc/cncd/plugins
+plugins_enabled = progress, gpio
+cnc_devices = i3,dumdum
+cameras = cam1
 
+[i3]
+name = Prusa i3 MK2s
+port = /dev/ttyPRUSA_i3
+baud = 115200
+abort_gcodes = M108
+stop_gcodes = M104 S0 ; M140 S0
+
+[dumdum]
+name = dummy printer
+port = dummy
+baud = 115200
+abort_gcodes = G10;  G10
+
+[cam1]
+name = Okki
+url = http://10.0.0.90:8080/?action=stream
+```
