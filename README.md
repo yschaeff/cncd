@@ -51,12 +51,12 @@ You are absolutely right. Allow me to explain some of them.
 
 ### "Safe for the Internet" vs. "No encryption or Authentication"
 This is a big one and comes from the fact that the Octoprint developer calls
-for **not** connecting Octoprint to the Internet. I get it why. I would not lightly
+for **not** connecting Octoprint to the Internet. I get why. I would not lightly
 trust my own software enough to expose it to remote hackers. Especially when controlling
 physical machines. Though this is exactly what many people use Octoprint for.
 
 My solution is not to do any authentication because Linux already does that. Not
-do any encryption because ssh already does that. Cncd will listen for commands
+do any encryption because ssh already does that. CNCD will listen for commands
 on a *Unix domain socket*. This means it is not accessible over the network. And it
 is not even accessible by other users on the same system, If you want to access
 your CNC device remotely you can use ssh to forward the socket to your local
@@ -100,6 +100,14 @@ That right. We don't run a webserver or any other form of GUI. We just open
 a socket and wait for other software to send us commands. The protocol is ASCII
 and line based so you could totally use netcat if you are *that* kind of person.
 
+That being said the software it not very useful without anyone writing a client
+for it to connect with. Since nobody else did that yet I wrote an ncurses based
+client. Available on this same repository in ./frontends/ directory.
+
+![Screenshot](https://github.com/yschaeff/cncd/raw/master/images/cnc-screenshot.png)
+
+Contributions on the GUI side are especially welcome!
+
 ### No webcam support / multiple webcam support
 Webcam support is similar to what Octoprint does. Don't manage them but just
 pass the URL to the GUI to do whatever. Except for us there is no practical limitation
@@ -118,7 +126,7 @@ letter. It is just how I would do it, roughly. Please consider them carefully.
 
 - Download and install Raspbian
   - Download at https://www.raspberrypi.org/downloads/raspbian/
-  - dd if=debian,img of=/dev/sdX
+  - dd if=debian.img of=/dev/sdX
 - Boot rPI and attach screen & keyboard (user/pass: pi/raspberry)
   - Make the rPI accessable over the network:
   - sudo systemctl enable ssh.service
@@ -176,52 +184,52 @@ This rule is to make sure my printer gets assigned the same TTY regardless of
 any other USB serial device connected. If you have multiple machines I highly recomment
 this. Figure out the correct setting with lsusb and udevadm
 
-  SUBSYSTEM=="tty", ATTRS{idVendor}=="2c99", ATTRS{idProduct}=="0001", ATTRS{serial}=="CZPX2017X003XK19721", SYMLINK+="ttyPRUSA_i3"
+> SUBSYSTEM=="tty", ATTRS{idVendor}=="2c99", ATTRS{idProduct}=="0001", ATTRS{serial}=="CZPX2017X003XK19721", SYMLINK+="ttyPRUSA_i3"
 
 ### SYSTEMD
 
 Make sure is always runs as unprivileged user cnc and the dir /var/run/cncd/ gets
 created before start. (the cnc user is not allowed to do this itself)
 
-  [Unit]
-  Description=Computer Numerical Control Deamon
-  
-  [Service]
-  ExecStart=/home/cnc/cncd/cncd.py
-  User=cnc
-  Group=cnc
-  RuntimeDirectory=cncd
-  Restart=on-failure
-  RestartSec=3
-  
-  [Install]
-  WantedBy=multi-user.target
+> [Unit]
+> Description=Computer Numerical Control Deamon
+> 
+> [Service]
+> ExecStart=/home/cnc/cncd/cncd.py
+> User=cnc
+> Group=cnc
+> RuntimeDirectory=cncd
+> Restart=on-failure
+> RestartSec=3
+> 
+> [Install]
+> WantedBy=multi-user.target
 
 ### CNCD config
 
-  [general]
-  unix_socket = /var/run/cncd/cncd.sock
-  log_level = warning
-  library = /home/cnc/gcode
-  plugin_path = /home/cnc/cncd/plugins
-  plugins_enabled = progress, gpio
-  cnc_devices = i3,dumdum
-  cameras = cam1
-  
-  [i3]
-  name = Prusa i3 MK2s
-  port = /dev/ttyPRUSA_i3
-  baud = 115200
-  abort_gcodes = M108
-  stop_gcodes = M104 S0 ; M140 S0
-  
-  [dumdum]
-  name = dummy printer
-  port = dummy
-  baud = 115200
-  abort_gcodes = G10;  G10
-  
-  [cam1]
-  name = Okki
-  url = http://10.0.0.90:8080/?action=stream
+> [general]
+> unix_socket = /var/run/cncd/cncd.sock
+> log_level = warning
+> library = /home/cnc/gcode
+> plugin_path = /home/cnc/cncd/plugins
+> plugins_enabled = progress, gpio
+> cnc_devices = i3,dumdum
+> cameras = cam1
+> 
+> [i3]
+> name = Prusa i3 MK2s
+> port = /dev/ttyPRUSA_i3
+> baud = 115200
+> abort_gcodes = M108
+> stop_gcodes = M104 S0 ; M140 S0
+> 
+> [dumdum]
+> name = dummy printer
+> port = dummy
+> baud = 115200
+> abort_gcodes = G10;  G10
+> 
+> [cam1]
+> name = Okki
+> url = http://10.0.0.90:8080/?action=stream
 
