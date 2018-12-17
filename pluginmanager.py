@@ -8,6 +8,7 @@ Callback = namedtuple('Callback', 'plugin callback')
 pluginmanager = None
 
 def plugin_hook(func):
+    """ This is a decorator that enables plugins to hook in to this fucntions"""
     global pluginmanager
     @functools.wraps(func)
     async def wrapper(*args, **kwargs):
@@ -22,6 +23,7 @@ def plugin_hook(func):
             except Exception as e:
                 log.error("plugin '{}' crashed.".format(hook.plugin.NAME))
                 log.error(traceback.format_exc())
+                pluginmanager.disable_bad_plugin(hook.plugin)
         r = await func(*args, **kwargs)
         for hook in posthooks:
             if not hook.callback: continue
@@ -31,8 +33,19 @@ def plugin_hook(func):
             except Exception as e:
                 log.error("plugin '{}' crashed.".format(hook.plugin.NAME))
                 log.error(traceback.format_exc())
+                pluginmanager.disable_bad_plugin(hook.plugin)
         return r
     return wrapper
+
+class DeviceStore:
+    def __init__(self):
+        self.store = defaultdict(defaultdict)
+    def update(self, device, plugin, name, value):
+        device_data = self.store[device]
+        device_data[(plugin, name)] = value
+    def get(self, device, plugin, name):
+        device_data = self.store[device]
+        return device_data[(plugin, name)]
 
 class PluginManager():
     def __init__(self, gctx):
@@ -41,6 +54,7 @@ class PluginManager():
         self.gctx = gctx
         self.prehooks = defaultdict(list)
         self.posthooks = defaultdict(list)
+        self.store = DeviceStore()
 
     def hooks_for(self, module, qname):
         return self.prehooks[(module, qname)], self.posthooks[(module, qname)]
@@ -52,6 +66,26 @@ class PluginManager():
         for target, callbacks in instance.POSTHOOKS.items():
             hooks = [Callback(instance, callback) for callback in callbacks]
             self.posthooks[target].extend(hooks)
+
+    def disable_bad_plugin(self, plugin):
+        if plugin not in self.gctx["plugins"]:
+            return
+        log.error("Misbehaving plugin '{}' unloaded.".format(plugin.NAME))
+        self.gctx["plugins"].remove(plugin)
+        try:
+            plugin.close()
+        except Exception as e:
+            log.error("Plugin crashed during unloading")
+            log.error(traceback.format_exc())
+
+        for target, hooks in self.prehooks.items():
+            badhooks = [hook for hook in hooks if hook.plugin == plugin]
+            for hook in badhooks:
+                hooks.remove(hook)
+        for target, hooks in self.posthooks.items():
+            badhooks = [hook for hook in hooks if hook.plugin == plugin]
+            for hook in badhooks:
+                hooks.remove(hook)
 
     def load_plugins(self):
         general = self.gctx['cfg']["general"]
@@ -68,7 +102,7 @@ class PluginManager():
             spec.loader.exec_module(plugin)
             log.info("Loading plugin {}".format(path))
             try:
-                instance = plugin.Plugin(self.gctx)
+                instance = plugin.Plugin(self.store, self.gctx)
             except Exception as e:
                 log.error("Plugin crashed during loading. Not activated.")
                 log.error(traceback.format_exc())

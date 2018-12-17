@@ -1,7 +1,6 @@
 import logging as log
 from plugins.pluginskel import SkeletonPlugin
 import os
-from collections import defaultdict
 from time import time
 
 ## Keeps track of the progress in de gcode file
@@ -32,7 +31,7 @@ class Plugin(SkeletonPlugin):
     ## starting point for every plugin. Passed is gctx which stand for 
     ## global context. It includes configuration, listening sockets etc.
     ## You SHOULD not write to gctx.
-    def __init__(self, gctx:dict):
+    def __init__(self, datastore, gctx:dict):
         ## We define our actions as POSTHOOKS here. We do not need to do
         ## anything beforehand in this case.
         ## 
@@ -50,17 +49,8 @@ class Plugin(SkeletonPlugin):
             ('robot', 'Device.gcode_readline_hook'):[self.readline_cb],
         }
         ## The rest is specific to this plugin
+        self.datastore = datastore
         self.gctx = gctx
-        class Progress:
-            def __init__(self):
-                self.progress = 0
-                self.total = 0
-                self.starttime = 0
-            def __repr__(self):
-                now = time()
-                return "{}/{} {}/{}".format(self.progress, self.total, self.starttime, now)
-        self.devices = defaultdict(Progress)
-
 
     ## Specifically defined for this plugin. However the function signature is
     ## important. The function MUST be defined async. Because CNCD is single
@@ -68,14 +58,19 @@ class Plugin(SkeletonPlugin):
     ## you ABSOLUTELY must then occasionally "await asyncio.sleep(0)" to handle
     ## control back to the scheduler for a bit.
     async def open_cb(self, *args, **kwargs) -> None:
+        ###
+        ## devicemanager.store(self, device, key, value)
+        ###
         device, filename = args
-        p = self.devices[device]
-        p.total = os.path.getsize(filename)
-        p.starttime = time()
+        self.datastore.update(device, self, "starttime", time())
+        self.datastore.update(device, self, "filename", filename)
+        self.datastore.update(device, self, "filesize", os.path.getsize(filename))
+        self.datastore.update(device, self, "progress", 0)
 
     async def readline_cb(self, *args, **kwargs) -> None:
         device, line = args
-        self.devices[device].progress += len(line)
+        progress = self.datastore.get(device, self, "progress")
+        self.datastore.update(device, self, "progress", progress+len(line))
 
 
     ## Called when user/gui calls a command in HANDLES. Argv is this command
@@ -102,8 +97,8 @@ class Plugin(SkeletonPlugin):
             return
         device = cnc_devices[dev_id]
         ## find progress for the queried device
-        progress = self.devices[device]
-        yield str(progress)
+        ## todo: total too
+        return str(self.datastore.get(device, self, "progress"))
 
 
     ## When CNCD restarts or exits the plugins get a change to properly close

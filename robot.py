@@ -76,6 +76,8 @@ class Device():
         self.response_event = asyncio.Event()
         self.resume_event.set() ## start not paused
 
+        self.plugindata = {}
+
     def update_cfg(self, dev_cfg):
         self.cfg = dev_cfg
 
@@ -98,19 +100,11 @@ class Device():
     def status(self):
         c = (self.handler != None)
         p = self.is_printing
-        Te = ""
-        TSe = ""
-        Tb = ""
-        TSb = ""
         fstaged = self.gcodefile
-        fprinting = self.printing_file
         paused = not self.resume_event.is_set()
 
         s  =  "connected:{}".format(c)
         s += " printing:{}".format(p)
-        s += " Textruder:{}/{}".format(Te, TSe)
-        s += " Tbed:{}/{}".format(Tb, TSb)
-        s += " file:\"{}\"".format(fprinting)
         s += " staged:\"{}\"".format(fstaged)
         s += " paused:{}".format(paused)
         return s
