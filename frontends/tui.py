@@ -236,13 +236,7 @@ class DeviceWindow(Window):
         w = make_w(stat_cols, 'printing', 'active', 'idle')
         w = make_w(stat_cols, 'paused', 'paused', 'operating')
         container.contents.append((stat_cols, container.options('pack')))
-        txt = Text("file printing: \"{}\"".format(status['file']))
-        container.contents.append((txt, container.options('pack')))
         txt = Text("file selected: \"{}\"".format(status['staged']))
-        container.contents.append((txt, container.options('pack')))
-        txt = Text("Textruder {}".format(status['Textruder']))
-        container.contents.append((txt, container.options('pack')))
-        txt = Text("Tbed {}".format(status['Tbed']))
         container.contents.append((txt, container.options('pack')))
 
         try:

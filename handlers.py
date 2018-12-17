@@ -322,7 +322,7 @@ async def tracestatus(gctx, cctx, lctx, dev):
         event.clear()
         while not event.is_set():
             lctx.writeln(dev.status())
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(3.0)
     elif lctx.argv[2] == 'stop':
         if 'tracestatus_stop_event' not in cctx:
             return
