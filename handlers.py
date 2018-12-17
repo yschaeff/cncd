@@ -19,11 +19,22 @@ def nargs(n):
         @functools.wraps(func)
         async def wrapper(gctx, cctx, lctx):
             if len(lctx.argv) < n:
-                lctx.writeln("ERROR Not enough arguments")
-                return
-            await func(gctx, cctx, lctx)
+                return "Not enough arguments"
+            return await func(gctx, cctx, lctx)
         return wrapper
     return decorator
+
+def signal_error(func):
+    """ Signal error to the user. """
+    @functools.wraps(func)
+    async def wrapper(gctx, cctx, lctx):
+        r = await func(gctx, cctx, lctx)
+        if r is None:
+            lctx.writeln("OK")
+        else:
+            lctx.writeln("ERROR {}".format(r))
+        return r
+    return wrapper
 
 def parse_device(func):
     """ Only execute function if first argument is resolvable to a configured
@@ -35,9 +46,8 @@ def parse_device(func):
         try:
             dev = configured_devices[devname]
         except KeyError:
-            lctx.writeln("ERROR Device not found")
-            return
-        await func(gctx, cctx, lctx, dev)
+            return "Device not found"
+        return await func(gctx, cctx, lctx, dev)
     return wrapper
 
 
@@ -139,24 +149,23 @@ async def dumplctx(gctx, cctx, lctx):
     """DEBUG List local context"""
     lctx.writeln("{}".format(lctx))
 
+@signal_error
 @nargs(2)
 @parse_device
 async def connect(gctx, cctx, lctx, dev):
     """Control configured devices"""
-    if await dev.connect():
-        lctx.writeln("OK")
-    else:
-        lctx.writeln("ERROR")
+    if not await dev.connect():
+        return "Connect failed"
 
+@signal_error
 @nargs(2)
 @parse_device
 async def disconnect(gctx, cctx, lctx, dev):
     """Control configured devices"""
-    if await dev.disconnect():
-        lctx.writeln("OK")
-    else:
-        lctx.writeln("ERROR")
+    if not await dev.disconnect():
+        return "Disconnect failed"
 
+@signal_error
 @nargs(2)
 @parse_device
 async def status(gctx, cctx, lctx, dev):
@@ -164,6 +173,7 @@ async def status(gctx, cctx, lctx, dev):
     status = dev.status()
     lctx.writeln(status)
 
+@signal_error
 @nargs(3)
 @parse_device
 async def load(gctx, cctx, lctx, dev):
@@ -171,65 +181,47 @@ async def load(gctx, cctx, lctx, dev):
     argv = lctx.argv
     filename = argv[2]
     if dev.load_file(filename):
-        lctx.writeln("OK")
-    else:
-        lctx.writeln("ERROR")
+        return "Unable to load file"
 
+@signal_error
 @nargs(2)
 @parse_device
 async def start(gctx, cctx, lctx, dev):
     """start executing gcode"""
-    if await dev.start():
-        lctx.writeln("OK")
-    else:
-        lctx.writeln("ERROR")
+    if not await dev.start():
+        return "Start failed"
 
+@signal_error
 @nargs(2)
 @parse_device
 async def abort(gctx, cctx, lctx, dev):
     """abort executing gcode, also works when device is blocked"""
-    if await dev.abort():
-        lctx.writeln("OK")
-    else:
-        lctx.writeln("ERROR")
+    if not await dev.abort():
+        return "Abort failed"
 
+@signal_error
 @nargs(2)
 @parse_device
 async def stop(gctx, cctx, lctx, dev):
     """stop executing gcode"""
-    if await dev.stop():
-        lctx.writeln("OK")
-    else:
-        lctx.writeln("ERROR")
+    if not await dev.stop():
+        return "stop failed"
 
+@signal_error
 @nargs(2)
 @parse_device
 async def pause(gctx, cctx, lctx, dev):
     """pause executing gcode"""
-    if dev.pause():
-        lctx.writeln("OK")
-    else:
-        lctx.writeln("ERROR")
+    if not dev.pause():
+        return "pause failed"
 
+@signal_error
 @nargs(2)
 @parse_device
 async def resume(gctx, cctx, lctx, dev):
     """resume executing gcode"""
-    if dev.resume():
-        lctx.writeln("OK")
-    else:
-        lctx.writeln("ERROR")
-
-@nargs(3)
-@parse_device
-async def gcode(gctx, cctx, lctx, dev):
-    """List configured devices"""
-    argv = lctx.argv
-    gcode = argv[2]
-    if dev.send_gcode(gcode):
-        lctx.writeln("OK")
-    else:
-        lctx.writeln("ERROR Device not connected?")
+    if not dev.resume():
+        return "resume failed"
 
 async def quit(gctx, cctx, lctx):
     """Disconnect this client."""
@@ -332,5 +324,5 @@ async def tracestatus(gctx, cctx, lctx, dev):
         lctx.writeln("ERROR")
 
 handlers = [connect, disconnect, status, load, quit, shutdown, reboot, help, 
-    devlist, camlist, loglevel, stat, gcode, tracelog, tracestatus,
+    devlist, camlist, loglevel, stat, tracelog, tracestatus,
     start, stop, abort, pause, resume, dumpconfig, dumpgctx, dumpcctx, dumplctx, sleep]
