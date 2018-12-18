@@ -9,7 +9,7 @@ class SkeletonPlugin():
     PLUGIN_API_VERSION = 0
     HANDLES = []
 
-    def __init__(self, gctx):
+    def __init__(self, datastore, gctx):
         pass
 
     def handle_command(self, argv, gctx, cctx, lctx):

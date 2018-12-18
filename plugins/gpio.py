@@ -11,7 +11,7 @@ class Plugin(SkeletonPlugin):
     POSTHOOKS = {}
     HANDLES = ['gpio']
 
-    def __init__(self, gctx:dict):
+    def __init__(self, datastore, gctx:dict):
         self.gctx = gctx
         GPIO.setwarnings(False);
         GPIO.setmode(GPIO.board)
