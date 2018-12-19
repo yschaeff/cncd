@@ -86,16 +86,17 @@ class Plugin(SkeletonPlugin):
     ## This function should be a generator (so the caller can read line by line
     ## and handle any multitasking) and thus should return None (StopIteration).
     ## It yields strings which are meant to be parsed by the caller.
-    def handle_command(self, argv:list, gctx:dict, cctx:dict, lctx) -> None:
+    async def handle_command(self, argv:list, gctx:dict, cctx:dict, lctx) -> None:
+        argv = lctx.argv
         if len(argv) < 2:
-            yield "ERROR Must specify device"
+            lctx.writeln("ERROR Must specify device")
             return
         ## find device handle
         dev_id = argv[1]
         ## find all configured CNC devices (instances)
         cnc_devices = gctx['dev']
         if dev_id not in cnc_devices:
-            yield "ERROR Specified device not found"
+            lctx.writeln("ERROR Specified device not found")
             return
         device = cnc_devices[dev_id]
         handle = device.handle

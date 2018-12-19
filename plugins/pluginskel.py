@@ -13,9 +13,8 @@ class SkeletonPlugin():
         self.datastore = datastore
         self.gctx = gctx
 
-    def handle_command(self, argv, gctx, cctx, lctx):
-        """must return iterable, each item will be written to connection
-           as new line"""
+    async def handle_command(self, gctx, cctx, lctx):
+        argv = lctx.argv
         return
 
     def close(self):

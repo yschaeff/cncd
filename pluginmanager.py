@@ -62,6 +62,11 @@ class PluginManager():
     def hooks_for(self, module, qname):
         return self.prehooks[(module, qname)], self.posthooks[(module, qname)]
 
+    def get_handlers(self):
+        for plugin in self.gctx["plugins"]:
+            for handle in plugin.HANDLES:
+                yield handle, plugin.handle_command
+
     def collect_hooks(self, instance):
         for target, callbacks in instance.PREHOOKS.items():
             hooks = [Callback(instance, callback) for callback in callbacks]
@@ -102,7 +107,11 @@ class PluginManager():
         for path in paths:
             spec = importlib.util.spec_from_file_location("module.name", path)
             plugin = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(plugin)
+            try:
+                spec.loader.exec_module(plugin)
+            except FileNotFoundError:
+                log.error("Plugin \"{}\" not found. Not activated.".format(path))
+                continue
             log.info("Loading plugin {}".format(path))
             try:
                 instance = plugin.Plugin(self.store, self.gctx)

@@ -12,13 +12,14 @@ from cfg import load_configuration
 CLEAN_EXIT = True
 
 class Handler:
-    def __init__(self, cb):
+    def __init__(self, name, cb):
         self.cb = cb
+        self.name = name
 
     def handles(self, argv, exact=False):
         if exact:
-            return argv[0] == self.cb.__name__
-        return self.cb.__name__.startswith(argv[0])
+            return argv[0] == self.name
+        return self.name.startswith(argv[0])
 
 def done_cb(gctx, cctx, lctx, future):
     global CLEAN_EXIT
@@ -149,6 +150,7 @@ def load_plugins_from_cfg(gctx):
     pluginmanager = PluginManager(gctx)
     gctx['pluginmanager'] = pluginmanager
     pluginmanager.load_plugins()
+    gctx['hdl'] += [Handler(handle, callback) for handle, callback in pluginmanager.get_handlers()]
 
 if not os.geteuid():
     log.fatal('Thou Shalt Not Run As Root.')
@@ -163,7 +165,7 @@ while True:
     cfg = load_configuration()
     
     gctx['cfg'] = cfg
-    gctx['hdl'] = [Handler(name) for name in handlers.handlers]
+    gctx['hdl'] = [Handler(callback.__name__, callback) for callback in handlers.handlers]
     gctx['srv'] = []
     gctx['reboot'] = False
 

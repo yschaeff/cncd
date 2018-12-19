@@ -57,23 +57,6 @@ async def last_resort(gctx, cctx, lctx):
         lctx.writeln("closing for you")
         cctx['transport'].close()
         return
-
-    plugins = gctx["plugins"]
-    for plugin in plugins:
-        try:
-            if not lctx.argv[0] in plugin.HANDLES: continue
-            for line in plugin.handle_command(lctx.argv, gctx, cctx, lctx):
-                transport = cctx['transport']
-                if transport.is_closing(): return
-                lctx.writeln(line)
-                await asyncio.sleep(0) ## force cooperative multitasking
-            return #first come first serve, do not allow others to handle this command as well
-        except Exception as e:
-            log.error("Plugin crashed. Disabling plugin until restart.")
-            log.error(traceback.format_exc())
-            plugins.remove(plugin)
-            return
-
     lctx.writeln("ERROR UNHANDLED INPUT. HINT: type help")
     log.warning("UNHANDLED INPUT '{}'".format(lctx.argv))
 
@@ -265,40 +248,40 @@ async def loglevel(gctx, cctx, lctx):
         return
     rootlogger.setLevel(level)
 
-@nargs(2)
-async def tracelog(gctx, cctx, lctx):
-    """args: start|stop receive server log messages"""
-    class ByteStreamHandler(log.StreamHandler):
-        def __init__(self, writefunc):
-            super().__init__()
-            self.writefunc = writefunc
-        def emit(self, record):
-            formatted = self.format(record)
-            try:
-                self.writefunc(formatted)
-            except:
-                ## never ever crash here. Trace might be logged!
-                pass
-    if lctx.argv[1] == 'start':
-        loghandler = ByteStreamHandler(lctx.writeln)
-        formatter = log.Formatter('%(levelname)s:%(message)s')
-        loghandler.setFormatter(formatter)
-        rootlogger = log.getLogger()
-        rootlogger.addHandler(loghandler)
-        if 'tracelog_stop_event' not in cctx:
-            event = asyncio.Event()
-            event.clear()
-            cctx['tracelog_stop_event'] = event
-        else:
-            event = cctx['tracelog_stop_event']
-        event.clear()
-        await event.wait()
-        rootlogger.removeHandler(loghandler)
-    elif lctx.argv[1] == 'stop':
-        if 'tracelog_stop_event' not in cctx:
-            return
-        event = cctx['tracelog_stop_event']
-        event.set()
+#@nargs(2)
+#async def tracelog(gctx, cctx, lctx):
+    #"""args: start|stop receive server log messages"""
+    #class ByteStreamHandler(log.StreamHandler):
+        #def __init__(self, writefunc):
+            #super().__init__()
+            #self.writefunc = writefunc
+        #def emit(self, record):
+            #formatted = self.format(record)
+            #try:
+                #self.writefunc(formatted)
+            #except:
+                ### never ever crash here. Trace might be logged!
+                #pass
+    #if lctx.argv[1] == 'start':
+        #loghandler = ByteStreamHandler(lctx.writeln)
+        #formatter = log.Formatter('%(levelname)s:%(message)s')
+        #loghandler.setFormatter(formatter)
+        #rootlogger = log.getLogger()
+        #rootlogger.addHandler(loghandler)
+        #if 'tracelog_stop_event' not in cctx:
+            #event = asyncio.Event()
+            #event.clear()
+            #cctx['tracelog_stop_event'] = event
+        #else:
+            #event = cctx['tracelog_stop_event']
+        #event.clear()
+        #await event.wait()
+        #rootlogger.removeHandler(loghandler)
+    #elif lctx.argv[1] == 'stop':
+        #if 'tracelog_stop_event' not in cctx:
+            #return
+        #event = cctx['tracelog_stop_event']
+        #event.set()
 
 @nargs(2)
 @parse_device
@@ -324,5 +307,5 @@ async def tracestatus(gctx, cctx, lctx, dev):
         lctx.writeln("ERROR")
 
 handlers = [connect, disconnect, status, load, quit, shutdown, reboot, help, 
-    devlist, camlist, loglevel, stat, tracelog, tracestatus,
+    devlist, camlist, loglevel, stat, tracestatus,
     start, stop, abort, pause, resume, dumpconfig, dumpgctx, dumpcctx, dumplctx, sleep]
