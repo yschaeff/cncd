@@ -8,6 +8,7 @@ import os, socket, traceback
 import handlers, robot, serial
 from pluginmanager import PluginManager
 from cfg import load_configuration
+from datastore import DataStore
 
 CLEAN_EXIT = True
 
@@ -168,6 +169,7 @@ while True:
     gctx['hdl'] = [Handler(callback.__name__, callback) for callback in handlers.handlers]
     gctx['srv'] = []
     gctx['reboot'] = False
+    gctx['datastore'] = DataStore()
 
     general = cfg["general"]
 

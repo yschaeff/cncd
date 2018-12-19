@@ -14,7 +14,7 @@ class Plugin(SkeletonPlugin):
 
     def __init__(self, datastore, gctx:dict):
         Plugin.POSTHOOKS = {
-            ('pluginmanager', 'DeviceStore.update_device'):[self.update_device],
+            ('datastore', 'DataStore.update_device'):[self.update_device],
         }
         self.events = {}
 

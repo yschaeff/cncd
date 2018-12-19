@@ -37,21 +37,6 @@ def plugin_hook(func):
         return r
     return wrapper
 
-class DeviceStore:
-    def __init__(self):
-        self.devicedata = defaultdict(functools.partial(defaultdict, str))
-        self.globaldata = defaultdict(str)
-
-    @plugin_hook
-    async def update_device(self, devicename, name, value):
-        self.devicedata[devicename][name] = value
-    async def update_global(self, name, value):
-        self.globaldata[name] = value
-    def get_device(self, devicename, name):
-        return self.devicedata[devicename][name]
-    def get_global(self, name):
-        return self.globaldata[name]
-
 class PluginManager():
     def __init__(self, gctx):
         global pluginmanager
@@ -59,7 +44,7 @@ class PluginManager():
         self.gctx = gctx
         self.prehooks = defaultdict(list)
         self.posthooks = defaultdict(list)
-        self.store = DeviceStore()
+        self.store = gctx['datastore']
 
     def hooks_for(self, module, qname):
         return self.prehooks[(module, qname)], self.posthooks[(module, qname)]
