@@ -41,9 +41,11 @@ class DeviceStore:
     def __init__(self):
         self.devicedata = defaultdict(functools.partial(defaultdict, str))
         self.globaldata = defaultdict(str)
-    def update_device(self, devicename, name, value):
+
+    @plugin_hook
+    async def update_device(self, devicename, name, value):
         self.devicedata[devicename][name] = value
-    def update_global(self, name, value):
+    async def update_global(self, name, value):
         self.globaldata[name] = value
     def get_device(self, devicename, name):
         return self.devicedata[devicename][name]

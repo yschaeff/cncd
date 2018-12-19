@@ -63,16 +63,16 @@ class Plugin(SkeletonPlugin):
         ###
         device, filename = args
         handle = device.handle
-        self.datastore.update_device(handle, "starttime", time())
-        self.datastore.update_device(handle, "filename", filename)
-        self.datastore.update_device(handle, "filesize", os.path.getsize(filename))
-        self.datastore.update_device(handle, "progress", 0)
+        await self.datastore.update_device(handle, "starttime", time())
+        await self.datastore.update_device(handle, "filename", filename)
+        await self.datastore.update_device(handle, "filesize", os.path.getsize(filename))
+        await self.datastore.update_device(handle, "progress", 0)
 
     async def readline_cb(self, *args, **kwargs) -> None:
         device, line = args
         handle = device.handle
         progress = self.datastore.get_device(handle, "progress")
-        self.datastore.update_device(handle, "progress", progress+len(line))
+        await self.datastore.update_device(handle, "progress", progress+len(line))
 
 
     ## Called when user/gui calls a command in HANDLES. Argv is this command

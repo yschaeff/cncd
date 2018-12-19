@@ -15,6 +15,7 @@ class Plugin(SkeletonPlugin):
         argv = lctx.argv
         if len(argv) < 2 or (argv[1] != 'start' and argv[1] != 'stop'):
             lctx.writeln("ERROR specify start or stop")
+            return
         """args: start|stop receive server log messages"""
         class ByteStreamHandler(log.StreamHandler):
             def __init__(self, writefunc):

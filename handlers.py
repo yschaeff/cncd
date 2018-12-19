@@ -60,17 +60,6 @@ async def last_resort(gctx, cctx, lctx):
     lctx.writeln("ERROR UNHANDLED INPUT. HINT: type help")
     log.warning("UNHANDLED INPUT '{}'".format(lctx.argv))
 
-@nargs(2)
-async def sleep(gctx, cctx, lctx):
-    """Test async functionality"""
-    try:
-        t = int(lctx.argv[1])
-    except ValueError:
-        t = 0
-    lctx.writeln("sleeping for {} seconds".format(t))
-    await asyncio.sleep(t)
-    lctx.writeln("waking")
-
 async def lsdir(dirname):
     try:
         objects = os.listdir(dirname)
@@ -248,64 +237,6 @@ async def loglevel(gctx, cctx, lctx):
         return
     rootlogger.setLevel(level)
 
-#@nargs(2)
-#async def tracelog(gctx, cctx, lctx):
-    #"""args: start|stop receive server log messages"""
-    #class ByteStreamHandler(log.StreamHandler):
-        #def __init__(self, writefunc):
-            #super().__init__()
-            #self.writefunc = writefunc
-        #def emit(self, record):
-            #formatted = self.format(record)
-            #try:
-                #self.writefunc(formatted)
-            #except:
-                ### never ever crash here. Trace might be logged!
-                #pass
-    #if lctx.argv[1] == 'start':
-        #loghandler = ByteStreamHandler(lctx.writeln)
-        #formatter = log.Formatter('%(levelname)s:%(message)s')
-        #loghandler.setFormatter(formatter)
-        #rootlogger = log.getLogger()
-        #rootlogger.addHandler(loghandler)
-        #if 'tracelog_stop_event' not in cctx:
-            #event = asyncio.Event()
-            #event.clear()
-            #cctx['tracelog_stop_event'] = event
-        #else:
-            #event = cctx['tracelog_stop_event']
-        #event.clear()
-        #await event.wait()
-        #rootlogger.removeHandler(loghandler)
-    #elif lctx.argv[1] == 'stop':
-        #if 'tracelog_stop_event' not in cctx:
-            #return
-        #event = cctx['tracelog_stop_event']
-        #event.set()
-
-@nargs(2)
-@parse_device
-async def tracestatus(gctx, cctx, lctx, dev):
-    """args: start|stop receive device status messages"""
-    if lctx.argv[2] == 'start':
-        if 'tracestatus_stop_event' not in cctx:
-            event = asyncio.Event()
-            event.clear()
-            cctx['tracestatus_stop_event'] = event
-        else:
-            event = cctx['tracestatus_stop_event']
-        event.clear()
-        while not event.is_set():
-            lctx.writeln(dev.status())
-            await asyncio.sleep(3.0)
-    elif lctx.argv[2] == 'stop':
-        if 'tracestatus_stop_event' not in cctx:
-            return
-        event = cctx['tracestatus_stop_event']
-        event.set()
-    else:
-        lctx.writeln("ERROR")
-
 handlers = [connect, disconnect, status, load, quit, shutdown, reboot, help, 
-    devlist, camlist, loglevel, stat, tracestatus,
-    start, stop, abort, pause, resume, dumpconfig, dumpgctx, dumpcctx, dumplctx, sleep]
+    devlist, camlist, loglevel, stat,
+    start, stop, abort, pause, resume, dumpconfig, dumpgctx, dumpcctx, dumplctx]
