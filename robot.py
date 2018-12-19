@@ -58,9 +58,10 @@ class SerialConnection(asyncio.Protocol):
 
 class Device():
     """General CNC device, keeps state, buffers etc"""
-    def __init__(self, dev_cfg, gctx):
+    def __init__(self, handle, dev_cfg, gctx):
         self.cfg = dev_cfg
         self.gctx = gctx
+        self.handle = handle
         self.con = None
         log.info("Added device \"{}\"".format(self.cfg['name']))
         self.connected = False

@@ -8,7 +8,7 @@ Callback = namedtuple('Callback', 'plugin callback')
 pluginmanager = None
 
 def plugin_hook(func):
-    """ This is a decorator that enables plugins to hook in to this fucntions"""
+    """ This is a decorator that enables plugins to hook in to this functions"""
     global pluginmanager
     @functools.wraps(func)
     async def wrapper(*args, **kwargs):
@@ -39,13 +39,16 @@ def plugin_hook(func):
 
 class DeviceStore:
     def __init__(self):
-        self.store = defaultdict(defaultdict)
-    def update(self, device, plugin, name, value):
-        device_data = self.store[device]
-        device_data[(plugin, name)] = value
-    def get(self, device, plugin, name):
-        device_data = self.store[device]
-        return device_data[(plugin, name)]
+        self.devicedata = defaultdict(functools.partial(defaultdict, str))
+        self.globaldata = defaultdict(str)
+    def update_device(self, devicename, name, value):
+        self.devicedata[devicename][name] = value
+    def update_global(self, name, value):
+        self.globaldata[name] = value
+    def get_device(self, devicename, name):
+        return self.devicedata[devicename][name]
+    def get_global(self, name):
+        return self.globaldata[name]
 
 class PluginManager():
     def __init__(self, gctx):

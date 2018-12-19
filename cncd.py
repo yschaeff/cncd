@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-from cfg import load_configuration
 from collections import namedtuple
 import logging as log
 import asyncio, functools, concurrent
 import shlex ##shell lexer
-import handlers, robot, serial
-from pluginmanager import PluginManager
 import serial_asyncio
 import os, socket, traceback
+import handlers, robot, serial
+from pluginmanager import PluginManager
+from cfg import load_configuration
 
 CLEAN_EXIT = True
 
@@ -128,7 +128,7 @@ def load_devices_from_cfg(gctx):
         if device in gctx['dev']:
             gctx['dev'][device].update_cfg(section)
         else:
-            gctx['dev'][device] = robot.Device(section, gctx)
+            gctx['dev'][device] = robot.Device(device, section, gctx)
 
 def load_webcams_from_cfg(gctx):
     cfg = gctx['cfg']

@@ -62,15 +62,17 @@ class Plugin(SkeletonPlugin):
         ## devicemanager.store(self, device, key, value)
         ###
         device, filename = args
-        self.datastore.update(device, self, "starttime", time())
-        self.datastore.update(device, self, "filename", filename)
-        self.datastore.update(device, self, "filesize", os.path.getsize(filename))
-        self.datastore.update(device, self, "progress", 0)
+        handle = device.handle
+        self.datastore.update_device(handle, "starttime", time())
+        self.datastore.update_device(handle, "filename", filename)
+        self.datastore.update_device(handle, "filesize", os.path.getsize(filename))
+        self.datastore.update_device(handle, "progress", 0)
 
     async def readline_cb(self, *args, **kwargs) -> None:
         device, line = args
-        progress = self.datastore.get(device, self, "progress")
-        self.datastore.update(device, self, "progress", progress+len(line))
+        handle = device.handle
+        progress = self.datastore.get_device(handle, "progress")
+        self.datastore.update_device(handle, "progress", progress+len(line))
 
 
     ## Called when user/gui calls a command in HANDLES. Argv is this command
@@ -96,9 +98,10 @@ class Plugin(SkeletonPlugin):
             yield "ERROR Specified device not found"
             return
         device = cnc_devices[dev_id]
+        handle = device.handle
         ## find progress for the queried device
         ## todo: total too
-        return str(self.datastore.get(device, self, "progress"))
+        return str(self.datastore.get_device(handle, "progress"))
 
 
     ## When CNCD restarts or exits the plugins get a change to properly close

@@ -10,7 +10,8 @@ class SkeletonPlugin():
     HANDLES = []
 
     def __init__(self, datastore, gctx):
-        pass
+        self.datastore = datastore
+        self.gctx = gctx
 
     def handle_command(self, argv, gctx, cctx, lctx):
         """must return iterable, each item will be written to connection
