@@ -184,7 +184,7 @@ async def stop(gctx, cctx, lctx, dev):
 @parse_device
 async def pause(gctx, cctx, lctx, dev):
     """pause executing gcode"""
-    if not dev.pause():
+    if not await dev.pause():
         return "pause failed"
 
 @signal_error
@@ -192,7 +192,7 @@ async def pause(gctx, cctx, lctx, dev):
 @parse_device
 async def resume(gctx, cctx, lctx, dev):
     """resume executing gcode"""
-    if not dev.resume():
+    if not await dev.resume():
         return "resume failed"
 
 async def quit(gctx, cctx, lctx):

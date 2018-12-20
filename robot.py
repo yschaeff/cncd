@@ -75,8 +75,11 @@ class Device():
         self.resume_event = asyncio.Event()
         self.response_event = asyncio.Event()
         self.resume_event.set() ## start not paused
+        self.gctx['datastore'].update_nocoro(self.handle, 'paused', False)
+        self.gctx['datastore'].update_nocoro(self.handle, 'idle', True)
 
-        self.plugindata = {}
+    async def store(self, key, value):
+        await self.gctx['datastore'].update(self.handle, key, value)
 
     def update_cfg(self, dev_cfg):
         self.cfg = dev_cfg
@@ -208,7 +211,9 @@ class Device():
     async def replay_gcode(self):
         self.stop_event.clear()
         self.resume_event.set()
+        await self.store('paused', False)
         self.is_printing = True
+        await self.store('idle', False)
         self.forceful_stop = False
         with open(await self.gcode_open_hook(self.gcodefile)) as fd:
             for line in fd:
@@ -230,6 +235,7 @@ class Device():
 
         log.debug("Print job stopped.")
         self.is_printing = False
+        await self.store('idle', True)
 
     async def start(self): ## rename print file?
         if not self.gcodefile:
@@ -241,12 +247,14 @@ class Device():
         self.gcode_task = asyncio.ensure_future(self.replay_gcode())
         return True
 
-    def pause(self):
+    async def pause(self):
         self.resume_event.clear()
+        await self.store('paused', True)
         return True
 
-    def resume(self):
+    async def resume(self):
         self.resume_event.set()
+        await self.store('paused', False)
         return True
 
     async def abort(self):
@@ -259,6 +267,6 @@ class Device():
         ## make sure the device will stop
         self.stop_event.set()
         ## unpause
-        self.resume()
+        await self.resume()
         return True
 

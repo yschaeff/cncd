@@ -15,6 +15,12 @@ class DataStore:
     @plugin_hook
     async def update(self, devicename, name, value):
         self.data[devicename][name] = value
+    def update_nocoro(self, devicename, name, value):
+        """
+            Same as above but need not be awaited, also can't be hooked.
+            Usefull for init code
+        """
+        self.data[devicename][name] = value
     def get(self, devicename, name):
         return self.data[devicename][name]
 
