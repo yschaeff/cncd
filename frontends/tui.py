@@ -220,8 +220,8 @@ class DeviceWindow(Window):
                 value = item[i+1:]
                 self.status[key] = value
 
-        def make_w(container, key, Tlabel, Flabel):
-            if self.status[key] == 'True':
+        def make_w(container, key, Tlabel, Flabel, reverse=False):
+            if (self.status[key] == 'True') ^ reverse:
                 label = "[{}]".format(Tlabel)
                 attr = 'Tlabel'
             else:
@@ -233,11 +233,11 @@ class DeviceWindow(Window):
         container.contents.clear()
         stat_cols = Columns([], 0)
         w = make_w(stat_cols, 'connected', 'connected', 'disconnected')
-        w = make_w(stat_cols, 'printing', 'active', 'idle')
+        w = make_w(stat_cols, 'idle', 'active', 'idle', reverse=True)
         w = make_w(stat_cols, 'paused', 'paused', 'operating')
         container.contents.append((stat_cols, container.options('pack')))
         for key, value in sorted(self.status.items()):
-            if key in ['connected', 'printing', 'paused']: continue
+            if key in ['connected', 'idle', 'paused']: continue
             attr = 'Flabel'
             w = AttrMap(Text("{}: {}".format(key, value)), attr, attr)
             container.contents.append((w, container.options('pack')))
