@@ -6,7 +6,7 @@ from urwid import Frame, Text, Filler, AttrMap, ListBox, Divider, SimpleFocusLis
     SimpleListWalker
 from functools import partial
 import logging as log
-import re
+import re, time
 import webbrowser
 import shlex
 from collections import defaultdict
@@ -205,6 +205,7 @@ class DeviceWindow(Window):
         self.update()
 
     def start(self):
+        self.update()
         self.tui.controller.subscribe(partial(self.update_status_cb, self.statuswidget), self.locator)
 
     def stop(self):

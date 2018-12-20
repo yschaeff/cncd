@@ -77,6 +77,7 @@ class Device():
         self.resume_event.set() ## start not paused
         self.gctx['datastore'].update_nocoro(self.handle, 'paused', False)
         self.gctx['datastore'].update_nocoro(self.handle, 'idle', True)
+        self.gctx['datastore'].update_nocoro(self.handle, 'selected', "")
 
     async def store(self, key, value):
         await self.gctx['datastore'].update(self.handle, key, value)
@@ -157,7 +158,7 @@ class Device():
     @plugin_hook
     async def disconnect(self):
         if self.handler:
-            self.resume()
+            await self.resume()
             self.handler.expect_close = True
             self.handler.close()
             self.response_event.set()
@@ -167,8 +168,9 @@ class Device():
         await self.gctx['datastore'].update(self.handle, 'connected', False)
         return True
 
-    def load_file(self, filename):
+    async def load_file(self, filename):
         self.gcodefile = filename
+        await self.gctx['datastore'].update(self.handle, 'selected', filename)
         return True
 
     async def send(self, gcode, wait_for_ack=True):
@@ -206,16 +208,20 @@ class Device():
 
     @plugin_hook
     async def gcode_open_hook(self, filename):
+        await self.store('paused', False)
+        await self.store('idle', False)
         return filename
+    
+    @plugin_hook
+    async def gcode_done_hook(self):
+        await self.store('idle', True)
 
-    async def replay_gcode(self):
+    async def replay_gcode(self, gcodefile):
         self.stop_event.clear()
         self.resume_event.set()
-        await self.store('paused', False)
         self.is_printing = True
-        await self.store('idle', False)
         self.forceful_stop = False
-        with open(await self.gcode_open_hook(self.gcodefile)) as fd:
+        with open(await self.gcode_open_hook(gcodefile)) as fd:
             for line in fd:
                 line = await self.gcode_readline_hook(line)
                 idx = line.rfind(';')
@@ -235,16 +241,18 @@ class Device():
 
         log.debug("Print job stopped.")
         self.is_printing = False
-        await self.store('idle', True)
+        await self.gcode_done_hook()
 
     async def start(self): ## rename print file?
+        ## TODO start should take file as argument. The gui should keep selection
+        ## information.
         if not self.gcodefile:
             log.warning("Asking for start but no gcode file selected.")
             return False ## emit warning
         if not self.handler: return False
         if self.is_printing: return False
         #await asyncio.sleep(1) # make sure printer is done with init msgs
-        self.gcode_task = asyncio.ensure_future(self.replay_gcode())
+        self.gcode_task = asyncio.ensure_future(functools.partial(self.replay_gcode, self.gcodefile)())
         return True
 
     async def pause(self):

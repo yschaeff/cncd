@@ -2,6 +2,7 @@ import logging as log
 from plugins.pluginskel import SkeletonPlugin
 import os
 from time import time
+from collections import defaultdict
 
 ## Keeps track of the progress in de gcode file
 ## This plugin should be a model to other plugins and will therefore have
@@ -47,10 +48,13 @@ class Plugin(SkeletonPlugin):
         Plugin.POSTHOOKS = {
             ('robot', 'Device.gcode_open_hook'):[self.open_cb],
             ('robot', 'Device.gcode_readline_hook'):[self.readline_cb],
+            ('robot', 'Device.gcode_done_hook'):[self.done_cb],
         }
         ## The rest is specific to this plugin
         self.datastore = datastore
         self.gctx = gctx
+        self.last_update = defaultdict(int)
+        self.accumulate = defaultdict(int)
 
     ## Specifically defined for this plugin. However the function signature is
     ## important. The function MUST be defined async. Because CNCD is single
@@ -64,15 +68,32 @@ class Plugin(SkeletonPlugin):
         device, filename = args
         handle = device.handle
         await self.datastore.update(handle, "starttime", time())
+        await self.datastore.update(handle, "stoptime", -1)
         await self.datastore.update(handle, "filename", filename)
         await self.datastore.update(handle, "filesize", os.path.getsize(filename))
         await self.datastore.update(handle, "progress", 0)
+        self.accumulate[handle] = 0
+
+    async def done_cb(self, *args, **kwargs) -> None:
+        device, = args
+        handle = device.handle
+        await self.datastore.update(handle, "stoptime", time())
+        ## flush
+        accumulate = self.accumulate[handle]
+        progress = self.datastore.get(handle, "progress")
+        await self.datastore.update(handle, "progress", progress+accumulate)
 
     async def readline_cb(self, *args, **kwargs) -> None:
         device, line = args
         handle = device.handle
-        progress = self.datastore.get(handle, "progress")
-        await self.datastore.update(handle, "progress", progress+len(line))
+        now = time()
+        self.accumulate[handle] += len(line)
+        if now - self.last_update[handle] > .5:
+            self.last_update[handle] = now
+            accumulate = self.accumulate[handle]
+            self.accumulate[handle] = 0
+            progress = self.datastore.get(handle, "progress")
+            await self.datastore.update(handle, "progress", progress+accumulate)
 
 
     ## Called when user/gui calls a command in HANDLES. Argv is this command

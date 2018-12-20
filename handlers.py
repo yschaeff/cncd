@@ -152,7 +152,7 @@ async def load(gctx, cctx, lctx, dev):
     """Assign gcode file to printer"""
     argv = lctx.argv
     filename = argv[2]
-    if dev.load_file(filename):
+    if await dev.load_file(filename):
         return "Unable to load file"
 
 @signal_error
