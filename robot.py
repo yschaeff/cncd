@@ -15,7 +15,7 @@ class DummySerialConnection():
     def write(self, msg):
         async def slow_ack():
             await asyncio.sleep(.01)
-            self.device.rx(b'ok\n')
+            await self.device.rx(b'ok\n')
         task = asyncio.ensure_future(slow_ack())
 
 class SerialConnection(asyncio.Protocol):
@@ -32,8 +32,8 @@ class SerialConnection(asyncio.Protocol):
         log.debug('Serial properties: {}'.format(transport))
         #transport.write(b'Hello, World!\n')  # Write serial data via transport
 
-    def data_received(self, data):
-        self.device.rx(data)
+    async def data_received(self, data):
+        await self.device.rx(data)
 
     def connection_lost(self, exc):
         if not self.expect_close:
@@ -88,17 +88,22 @@ class Device():
     def get_name(self):
         return self.cfg['name']
 
-    def rx(self, data):
+    @plugin_hook
+    async def incoming(self, response):
+        return response
+
+    async def rx(self, data):
         self.input_buffer += data
         while True:
             index = self.input_buffer.find(b'\n')
             if index < 0: break
             line  = self.input_buffer[:index+1]
             self.input_buffer = self.input_buffer[index+1:]
-            log.debug("response {}: '{}'".format(self.cfg['name'], line.decode().strip()))
-            if line.decode().strip() == 'ok':
+            response = await self.incoming(line.decode().strip())
+            log.debug("response {}: '{}'".format(self.cfg['name'], response))
+            if response == 'ok':
                 self.response_event.set()
-            elif line.decode().strip() == 'ERROR':
+            elif response == 'ERROR':
                 self.respnse_event.set()
 
     def status(self):
@@ -182,7 +187,6 @@ class Device():
         if wait_for_ack:
             log.debug("Waiting for device to acknowledge GCODE.")
             await self.response_event.wait()
-            log.debug("Ack!")
             self.response_event.clear()
 
     async def replay_abort_gcode(self):
