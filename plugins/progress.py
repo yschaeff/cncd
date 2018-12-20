@@ -63,16 +63,16 @@ class Plugin(SkeletonPlugin):
         ###
         device, filename = args
         handle = device.handle
-        await self.datastore.update_device(handle, "starttime", time())
-        await self.datastore.update_device(handle, "filename", filename)
-        await self.datastore.update_device(handle, "filesize", os.path.getsize(filename))
-        await self.datastore.update_device(handle, "progress", 0)
+        await self.datastore.update(handle, "starttime", time())
+        await self.datastore.update(handle, "filename", filename)
+        await self.datastore.update(handle, "filesize", os.path.getsize(filename))
+        await self.datastore.update(handle, "progress", 0)
 
     async def readline_cb(self, *args, **kwargs) -> None:
         device, line = args
         handle = device.handle
-        progress = self.datastore.get_device(handle, "progress")
-        await self.datastore.update_device(handle, "progress", progress+len(line))
+        progress = self.datastore.get(handle, "progress")
+        await self.datastore.update(handle, "progress", progress+len(line))
 
 
     ## Called when user/gui calls a command in HANDLES. Argv is this command
@@ -102,7 +102,7 @@ class Plugin(SkeletonPlugin):
         handle = device.handle
         ## find progress for the queried device
         ## todo: total too
-        return str(self.datastore.get_device(handle, "progress"))
+        return str(self.datastore.get(handle, "progress"))
 
 
     ## When CNCD restarts or exits the plugins get a change to properly close

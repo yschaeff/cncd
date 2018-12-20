@@ -7,44 +7,42 @@ from collections import defaultdict
 class Plugin(SkeletonPlugin):
 
     PLUGIN_API_VERSION = 1
-    NAME = "Log forwarder"
+    NAME = "Data Subscriber"
     PREHOOKS = {}
     POSTHOOKS = {}
-    HANDLES = ['tracedev']
+    HANDLES = ['subscribe', 'unsubscribe']
 
     def __init__(self, datastore, gctx:dict):
         Plugin.POSTHOOKS = {
-            ('datastore', 'DataStore.update_device'):[self.update_device],
+            ('datastore', 'DataStore.update'):[self.update],
         }
-        self.events = {}
+        self.handles = defaultdict(dict)
+        #[handle] = {connection:(event, writeln)}
 
-    async def update_device(self, store, devicename, name, value):
-        if devicename not in self.events:
-            return
-        event, writeln = self.events[devicename]
-        writeln('"{}":"{}"'.format(name, value))
+    async def update(self, store, devicename, name, value):
+        listeners_for_handle = self.handles[devicename]
+        for con, (event, writeln) in listeners_for_handle.items():
+            writeln('"{}":"{}"'.format(name, value))
 
     async def handle_command(self, gctx:dict, cctx:dict, lctx) -> None:
         argv = lctx.argv
-        if len(argv) < 3 or (argv[1] != 'start' and argv[1] != 'stop'):
-            lctx.writeln("ERROR specify start or stop and device")
+        if len(argv) < 2:
+            lctx.writeln("ERROR specify what to subscribe to")
             return
-        handle = argv[2]
-        if argv[1] == 'start':
-            if handle in self.events:
-                event, writeln = self.events[handle]
+        handle = argv[1]
+        listeners_for_handle = self.handles[handle]
+        key = cctx['transport']
+        if argv[0] == 'subscribe':
+            if key in listeners_for_handle:
+                event, writeln = listeners_for_handle[key]
                 event.set()
             event = asyncio.Event()
-            self.events[handle] = (event, lctx.writeln)
+            listeners_for_handle[key] = (event, lctx.writeln)
             event.clear()
             await event.wait()
-            self.events.pop(handle)
+            listeners_for_handle.pop(key)
         else:
-            if handle in self.events:
-                event, writeln = self.events[handle]
+            if key in listeners_for_handle:
+                event, writeln = listeners_for_handle[key]
                 event.set()
-
-    def close(self) -> None:
-        for event, writeln in self.events.values():
-            event.set()
 

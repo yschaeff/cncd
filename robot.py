@@ -71,7 +71,6 @@ class Device():
         self.gcode_task = None
         self.dummy = (dev_cfg["port"] == "dummy")
         self.is_printing = False
-        self.printing_file = ""
         self.stop_event = asyncio.Event()
         self.resume_event = asyncio.Event()
         self.response_event = asyncio.Event()
@@ -147,6 +146,7 @@ class Device():
         if self.success:
             log.info("Serial device connected successfully.")
             self.input_buffer = b''
+            await self.gctx['datastore'].update(self.handle, 'connected', True)
         else:
             log.error("Unable to connect to serial device.")
         return self.success
@@ -161,6 +161,7 @@ class Device():
             self.stop_event.set()
         else:
             log.warning("Requested disconnect. But not connected.")
+        await self.gctx['datastore'].update(self.handle, 'connected', False)
         return True
 
     def load_file(self, filename):
@@ -208,7 +209,6 @@ class Device():
         self.stop_event.clear()
         self.resume_event.set()
         self.is_printing = True
-        self.printing_file = self.gcodefile
         self.forceful_stop = False
         with open(await self.gcode_open_hook(self.gcodefile)) as fd:
             for line in fd:
@@ -228,7 +228,6 @@ class Device():
                         await self.replay_abort_gcode()
                     break
 
-        self.printing_file = ""
         log.debug("Print job stopped.")
         self.is_printing = False
 

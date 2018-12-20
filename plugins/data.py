@@ -9,10 +9,9 @@ class Plugin(SkeletonPlugin):
     async def handle_command(self, gctx:dict, cctx:dict, lctx) -> None:
         argv = lctx.argv
         if len(argv) <= 1:
-            for key, value in self.datastore.globaldata.items():
-                lctx.writeln('"{}":"{}"'.format(key, value))
+            lctx.writeln("ERROR need more args")
             return
         handle = argv[1]
-        for key, value in self.datastore.devicedata[handle].items():
+        for key, value in self.datastore.data[handle].items():
             lctx.writeln('"{}":"{}"'.format(key, value))
 
