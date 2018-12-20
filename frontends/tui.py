@@ -236,25 +236,11 @@ class DeviceWindow(Window):
         w = make_w(stat_cols, 'printing', 'active', 'idle')
         w = make_w(stat_cols, 'paused', 'paused', 'operating')
         container.contents.append((stat_cols, container.options('pack')))
-        for key, value in self.status.items():
+        for key, value in sorted(self.status.items()):
             if key in ['connected', 'printing', 'paused']: continue
             attr = 'Flabel'
             w = AttrMap(Text("{}: {}".format(key, value)), attr, attr)
             container.contents.append((w, container.options('pack')))
-
-        try:
-            prog = self.status['progress'].split('/')
-            p = int(prog[0])
-            t = int(prog[1])
-            if t:
-                perc = (p/t)*100
-            else:
-                perc = 0
-            txt = Text("progress: {} ({:0.2f}%)".format(self.status['progress'], perc))
-            container.contents.append((txt, container.options('pack')))
-        except:
-            ## you should be qshamed of yourself!
-            pass
 
     def update_status(self):
         self.tui.controller.get_data(partial(self.update_status_cb, self.statuswidget), self.locator)
