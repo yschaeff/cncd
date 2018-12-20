@@ -32,8 +32,8 @@ class SerialConnection(asyncio.Protocol):
         log.debug('Serial properties: {}'.format(transport))
         #transport.write(b'Hello, World!\n')  # Write serial data via transport
 
-    async def data_received(self, data):
-        await self.device.rx(data)
+    def data_received(self, data):
+        task = asyncio.ensure_future(self.device.rx(data))
 
     def connection_lost(self, exc):
         if not self.expect_close:
