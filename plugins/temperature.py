@@ -13,9 +13,13 @@ class Plugin(SkeletonPlugin):
     HANDLES = []
 
     def __init__(self, datastore, gctx:dict):
+        Plugin.PREHOOKS = {
+            ('robot', 'Device.start'):[self.connect],
+        }
         Plugin.POSTHOOKS = {
             ('robot', 'Device.incoming'):[self.incoming],
-            ('robot', 'Device.connect'):[self.connect],
+            #('robot', 'Device.connect'):[self.connect],
+            #('robot', 'Device.start'):[self.connect],
         }
         self.datastore = datastore
 
