@@ -14,7 +14,7 @@ class Plugin(SkeletonPlugin):
     def __init__(self, datastore, gctx:dict):
         self.gctx = gctx
         GPIO.setwarnings(False);
-        GPIO.setmode(GPIO.board)
+        GPIO.setmode(GPIO.BOARD)
 
     def handle_command(self, gctx:dict, cctx:dict, lctx) -> None:
         argv = lctx.argv
@@ -30,7 +30,7 @@ class Plugin(SkeletonPlugin):
             try:
                 GPIO.setup(pin, GPIO.IN)
                 state = GPIO.input(pin)
-                lctx.writeln("{}:{}".format(pin, state)
+                lctx.writeln("{}:{}".format(pin, state))
             except ValueError:
                 lctx.writeln("invalid pin number")
             return
