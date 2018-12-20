@@ -421,8 +421,10 @@ class Tui():
         window.start()
         rootwidget = self.mainloop.widget
         if type(rootwidget) != Columns:
+            self.mainloop.widget.stop()
             self.mainloop.widget = window
         else:
+            oldwin = rootwidget.contents[0][0].stop()
             rootwidget.contents[0] = (window, rootwidget.options(box_widget=True))
 
     def _unhandled_input(self, key):
