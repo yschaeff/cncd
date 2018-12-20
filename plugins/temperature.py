@@ -15,8 +15,12 @@ class Plugin(SkeletonPlugin):
     def __init__(self, datastore, gctx:dict):
         Plugin.POSTHOOKS = {
             ('robot', 'Device.incoming'):[self.incoming],
+            ('robot', 'Device.connect'):[self.connect],
         }
         self.datastore = datastore
+
+    async def connect(self, device):
+        device.send('M155 S1', wait_for_ack=False)
 
     async def incoming(self, device, response):
         handle = device.handle
