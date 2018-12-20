@@ -81,18 +81,18 @@ class Controller():
             gui_cb(webcams)
         self.protocol.send_message("camlist", controller_cb)
 
-    def get_status(self, gui_cb, device):
+    def get_data(self, gui_cb, device):
         def controller_cb(lines):
             gui_cb(lines)
-        self.protocol.send_message("status \"{}\"".format(device), controller_cb)
+        self.protocol.send_message("data \"{}\"".format(device), controller_cb)
 
-    def subscribe_status(self, gui_cb, device):
+    def subscribe(self, gui_cb, device):
         def controller_cb(lines):
             gui_cb(lines)
-        self.protocol.send_message("tracestatus \"{}\" start".format(device), controller_cb, flush=True)
+        self.protocol.send_message("subscribe \"{}\"".format(device), controller_cb, flush=True)
 
-    def unsubscribe_status(self, gui_cb, device):
-        self.protocol.send_message("tracestatus \"{}\" stop".format(device))
+    def unsubscribe(self, gui_cb, device):
+        self.protocol.send_message("unsubscribe \"{}\"".format(device))
 
     def get_filelist(self, gui_cb, device):
         def controller_cb(lines):

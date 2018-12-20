@@ -201,16 +201,16 @@ class DeviceWindow(Window):
         self.body.contents.append((listbox, ('weight', 1)))
         self.body.focus_position = 4
         self.add_hotkey('u', self.update, "update")
+        self.status = defaultdict(str)
         self.update()
 
     def start(self):
-        self.tui.controller.subscribe_status(partial(self.update_status_cb, self.statuswidget), self.locator)
+        self.tui.controller.subscribe(partial(self.update_status_cb, self.statuswidget), self.locator)
 
     def stop(self):
-        self.tui.controller.unsubscribe_status(None, self.locator)
+        self.tui.controller.unsubscribe(None, self.locator)
 
     def update_status_cb(self, container, lines):
-        status = defaultdict(str)
         for line in self.error_filter(lines):
             chunks = shlex.split(line.strip())
             for item in chunks:
@@ -218,10 +218,10 @@ class DeviceWindow(Window):
                 if i == -1: continue
                 key = item[:i]
                 value = item[i+1:]
-                status[key] = value
+                self.status[key] = value
 
         def make_w(container, key, Tlabel, Flabel):
-            if status[key] == 'True':
+            if self.status[key] == 'True':
                 label = "[{}]".format(Tlabel)
                 attr = 'Tlabel'
             else:
@@ -236,25 +236,28 @@ class DeviceWindow(Window):
         w = make_w(stat_cols, 'printing', 'active', 'idle')
         w = make_w(stat_cols, 'paused', 'paused', 'operating')
         container.contents.append((stat_cols, container.options('pack')))
-        txt = Text("file selected: \"{}\"".format(status['staged']))
-        container.contents.append((txt, container.options('pack')))
+        for key, value in self.status.items():
+            if key in ['connected', 'printing', 'paused']: continue
+            attr = 'Flabel'
+            w = AttrMap(Text("{}: {}".format(key, value)), attr, attr)
+            container.contents.append((w, container.options('pack')))
 
         try:
-            prog = status['progress'].split('/')
+            prog = self.status['progress'].split('/')
             p = int(prog[0])
             t = int(prog[1])
             if t:
                 perc = (p/t)*100
             else:
                 perc = 0
-            txt = Text("progress: {} ({:0.2f}%)".format(status['progress'], perc))
+            txt = Text("progress: {} ({:0.2f}%)".format(self.status['progress'], perc))
             container.contents.append((txt, container.options('pack')))
         except:
             ## you should be qshamed of yourself!
             pass
 
     def update_status(self):
-        self.tui.controller.get_status(partial(self.update_status_cb, self.statuswidget), self.locator)
+        self.tui.controller.get_data(partial(self.update_status_cb, self.statuswidget), self.locator)
 
     def update(self):
         self.update_status()
