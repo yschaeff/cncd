@@ -30,10 +30,9 @@ class SerialConnection(asyncio.Protocol):
         self.transport = transport
         log.info("Serial port {} opened".format(transport.serial.name))
         log.debug('Serial properties: {}'.format(transport))
-        #transport.write(b'Hello, World!\n')  # Write serial data via transport
 
-    async def data_received(self, data):
-        await self.device.rx(data)
+    def data_received(self, data):
+        task = asyncio.ensure_future(self.device.rx(data))
 
     def connection_lost(self, exc):
         if not self.expect_close:
@@ -71,6 +70,7 @@ class Device():
         self.gcode_task = None
         self.dummy = (dev_cfg["port"] == "dummy")
         self.is_printing = False
+        self.sendlock = asyncio.Lock()
         self.stop_event = asyncio.Event()
         self.resume_event = asyncio.Event()
         self.response_event = asyncio.Event()
@@ -101,7 +101,7 @@ class Device():
             self.input_buffer = self.input_buffer[index+1:]
             response = await self.incoming(line.decode().strip())
             log.debug("response {}: '{}'".format(self.cfg['name'], response))
-            if response == 'ok':
+            if response.startswith('ok'):
                 self.response_event.set()
             elif response == 'ERROR':
                 self.respnse_event.set()
@@ -181,13 +181,15 @@ class Device():
     async def send(self, gcode, wait_for_ack=True):
         gcode = gcode.strip()
         if not gcode: return
-        log.debug("command {}: '{}'".format(self.cfg['name'], gcode))
-        self.handler.write((gcode+'\n').encode())
-        ## wait for response
-        if wait_for_ack:
-            log.debug("Waiting for device to acknowledge GCODE.")
-            await self.response_event.wait()
-            self.response_event.clear()
+        async with self.sendlock:
+            log.debug("command {}: '{}'".format(self.cfg['name'], gcode))
+            if not handler: return ## can be true after each await!
+            self.handler.write((gcode+'\n').encode())
+            ## wait for response
+            if wait_for_ack:
+                log.debug("Waiting for device to acknowledge GCODE.")
+                await self.response_event.wait()
+                self.response_event.clear()
 
     async def replay_abort_gcode(self):
         log.warning("Print job aborted.")
@@ -219,6 +221,9 @@ class Device():
     @plugin_hook
     async def gcode_done_hook(self):
         await self.store('idle', True)
+
+    async def inject(self, gcode):
+        await self.send(gcode)
 
     async def replay_gcode(self, gcodefile):
         self.stop_event.clear()
@@ -274,6 +279,7 @@ class Device():
         await self.stop()
         ## pretend the device acknowledged so we can continue sending the abort.
         self.response_event.set()
+        return True
 
     async def stop(self):
         ## make sure the device will stop
