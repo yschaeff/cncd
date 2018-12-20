@@ -191,10 +191,10 @@ while True:
             path=general["unix_socket"])
     try:
         server = loop.run_until_complete(coro)
+        gctx['srv'].append(server)
+        log.info('Serving on {}'.format(server.sockets[0].getsockname()))
     except FileNotFoundError:
         log.error("Socket file {} not accessible.".format(general["unix_socket"]))
-    gctx['srv'].append(server)
-    log.info('Serving on {}'.format(server.sockets[0].getsockname()))
 
     try:
         loop.run_forever()
