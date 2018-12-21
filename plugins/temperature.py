@@ -45,34 +45,21 @@ class Plugin(SkeletonPlugin):
 
     async def incoming(self, device, response):
         handle = device.handle
-
-        #'ok T:22.5 /0.0 B:22.6 /0.0 T0:22.5 /0.0 @:0 B@:0'
-        ## does it look like a temperature message?
-        await self.datastore.update(handle, "response", response)
-
+        #await self.datastore.update(handle, "response", response)
         groups = self.tmp_pttrn.findall(response)
-        for group in groups:
-            l = group.split()
-            label = "?"
-            for i in l:
-                index = i.find(':')
-                if index != -1:
-                    label = i[:index]
-                    data = i[index+1:]
-                else:
-                    label += " set"
-                    data = i[1:]
-                await self.datastore.update(handle, label, data)
-
-        #if response.startswith('T:'):
-            # likely. Lets just try it and bail on failure
-            #try:
-                #chunks = response.split(" ")
-                #for chunk in chunks:
-                    #c = chunk.split(":")
-                    #L, T = c[0], c[1]
-                    #await self.datastore.update(handle, L, T)
-            #except:
-                #log.debug("failed to parse, maybe not tmp msg?")
+        if groups:
+            await self.datastore.update(handle, "temperature", response, str(groups))
+        #for group in groups:
+            #l = group.split()
+            #label = "?"
+            #for i in l:
+                #index = i.find(':')
+                #if index != -1:
+                    #label = i[:index]
+                    #data = i[index+1:]
+                #else:
+                    #label += " set"
+                    #data = i[1:]
+                #await self.datastore.update(handle, label, data)
 
 
