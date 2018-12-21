@@ -14,42 +14,34 @@ class Plugin(SkeletonPlugin):
 
     def __init__(self, datastore, gctx:dict):
         Plugin.PREHOOKS = {
-            ('robot', 'Device.connect'):[self.connect],
+            ('robot', 'Device.disconnect'):[self.disconnect],
         }
         Plugin.POSTHOOKS = {
+            ('robot', 'Device.connect'):[self.connect],
             ('robot', 'Device.incoming'):[self.incoming],
         }
         self.datastore = datastore
+        self.tasks_by_handle = {}
 
     async def poll(self, device):
+        handle = device.handle
         while True:
             await device.inject('M105')
-            asyncio.sleep(3)
-
-    async def poll_start(self, device):
-        #asyncio ensure
-        #save task
-        pass
-    async def poll_stop(self, device):
-        #get poll task for device
-        #task.cancel()
-        pass
+            await self.datastore.update(handle, "last_temp_request", time())
+            await asyncio.sleep(3)
 
     async def connect(self, device):
         handle = device.handle
         await self.datastore.update(handle, "last_temp_request", 0)
+        asyncio.ensure_future(self.poll(device))
+
+    async def disconnect(self, device):
+        task = tasks_by_handle.get(device.handle, None)
+        if task:
+            task.cancel()
 
     async def incoming(self, device, response):
         handle = device.handle
-
-        ##beter yet, on connect start a reocuring task and on disconnect stop it.
-        last_temp = self.datastore.get(handle, "last_temp_request")
-        now = time()
-        if now - last_temp > 2:
-            ## request temp report
-            ## Don't wait for it, the code would deadlock.
-            asyncio.ensure_future(device.inject('M105'))
-            await self.datastore.update(handle, "last_temp_request", time())
 
         #'ok T:22.5 /0.0 B:22.6 /0.0 T0:22.5 /0.0 @:0 B@:0'
         ## does it look like a temperature message?
