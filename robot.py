@@ -70,6 +70,7 @@ class Device():
         self.gcode_task = None
         self.dummy = (dev_cfg["port"] == "dummy")
         self.is_printing = False
+        self.gcode_queue = asyncio.Queue()
         self.stop_event = asyncio.Event()
         self.resume_event = asyncio.Event()
         self.response_event = asyncio.Event()
@@ -219,13 +220,23 @@ class Device():
     async def gcode_done_hook(self):
         await self.store('idle', True)
 
+    def muxer(self, fd, queue):
+        """ Muxes a file and a queue with gcodes. The queue has priority """
+        for line in fd:
+            while not queue.empty():
+                yield queue.get_nowait()
+            yield line
+
+    async def inject(self, gcode):
+        await self.gcode_queue.put(gcode)
+
     async def replay_gcode(self, gcodefile):
         self.stop_event.clear()
         self.resume_event.set()
         self.is_printing = True
         self.forceful_stop = False
         with open(await self.gcode_open_hook(gcodefile)) as fd:
-            for line in fd:
+            for line in self.muxer(fd, self.gcode_queue):
                 line = await self.gcode_readline_hook(line)
                 idx = line.rfind(';')
                 if idx>=0: line = line[:idx]
