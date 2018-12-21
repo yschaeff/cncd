@@ -14,21 +14,27 @@ class Plugin(SkeletonPlugin):
 
     def __init__(self, datastore, gctx:dict):
         Plugin.PREHOOKS = {
-            ('robot', 'Device.start'):[self.connect],
+            ('robot', 'Device.connect'):[self.connect],
         }
         Plugin.POSTHOOKS = {
             ('robot', 'Device.incoming'):[self.incoming],
-            #('robot', 'Device.connect'):[self.connect],
-            #('robot', 'Device.start'):[self.connect],
         }
         self.datastore = datastore
 
     async def connect(self, device):
-        await device.send('M155 S1', wait_for_ack=False)
+        handle = device.handle
+        await self.datastore.update(handle, "last_temp_request", 0)
 
     async def incoming(self, device, response):
         handle = device.handle
-        await self.datastore.update(handle, 'response', response)
+
+        last_temp = self.datastore.get(handle, "last_temp_request")
+        now = time()
+        if now - last_temp > 2:
+            ## request temp report
+            await device.inject('M105')
+            await self.datastore.update(handle, "last_temp_request", time())
+
         ## does it look like a temperature message?
         if response.startswith('T:'):
             ## likely. Lets just try it and bail on failure
