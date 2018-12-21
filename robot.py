@@ -101,7 +101,7 @@ class Device():
             self.input_buffer = self.input_buffer[index+1:]
             response = await self.incoming(line.decode().strip())
             log.debug("response {}: '{}'".format(self.cfg['name'], response))
-            if response == 'ok':
+            if response.startswith('ok'):
                 self.response_event.set()
             elif response == 'ERROR':
                 self.respnse_event.set()
