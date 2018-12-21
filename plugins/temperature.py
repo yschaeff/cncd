@@ -33,10 +33,11 @@ class Plugin(SkeletonPlugin):
     async def connect(self, device):
         handle = device.handle
         await self.datastore.update(handle, "last_temp_request", 0)
-        asyncio.ensure_future(self.poll(device))
+        task = asyncio.ensure_future(self.poll(device))
+        self.tasks_by_handle[handle] = task
 
     async def disconnect(self, device):
-        task = tasks_by_handle.get(device.handle, None)
+        task = self.tasks_by_handle.get(device.handle, None)
         if task:
             task.cancel()
 
