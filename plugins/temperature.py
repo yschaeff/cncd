@@ -21,6 +21,20 @@ class Plugin(SkeletonPlugin):
         }
         self.datastore = datastore
 
+    async def poll(self, device):
+        while True:
+            await device.inject('M105')
+            asyncio.sleep(3)
+
+    async def poll_start(self, device):
+        #asyncio ensure
+        #save task
+        pass
+    async def poll_stop(self, device):
+        #get poll task for device
+        #task.cancel()
+        pass
+
     async def connect(self, device):
         handle = device.handle
         await self.datastore.update(handle, "last_temp_request", 0)
@@ -28,13 +42,16 @@ class Plugin(SkeletonPlugin):
     async def incoming(self, device, response):
         handle = device.handle
 
+        ##beter yet, on connect start a reocuring task and on disconnect stop it.
         last_temp = self.datastore.get(handle, "last_temp_request")
         now = time()
         if now - last_temp > 2:
             ## request temp report
-            await device.inject('M105')
+            ## Don't wait for it, the code would deadlock.
+            asyncio.ensure_future(device.inject('M105'))
             await self.datastore.update(handle, "last_temp_request", time())
 
+        #'ok T:22.5 /0.0 B:22.6 /0.0 T0:22.5 /0.0 @:0 B@:0'
         ## does it look like a temperature message?
         if response.startswith('T:'):
             ## likely. Lets just try it and bail on failure
