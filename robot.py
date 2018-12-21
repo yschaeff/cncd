@@ -183,7 +183,7 @@ class Device():
         if not gcode: return
         async with self.sendlock:
             log.debug("command {}: '{}'".format(self.cfg['name'], gcode))
-            if not handler: return ## can be true after each await!
+            if not self.handler: return ## can be true after each await!
             self.handler.write((gcode+'\n').encode())
             ## wait for response
             if wait_for_ack:
