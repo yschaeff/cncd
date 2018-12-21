@@ -47,9 +47,8 @@ class Plugin(SkeletonPlugin):
         handle = device.handle
         #await self.datastore.update(handle, "response", response)
         groups = self.tmp_pttrn.findall(response)
-        print(groups)
         if groups:
-            await self.datastore.update(handle, "temperature", response, str(groups))
+            await self.datastore.update(handle, "temperature", str(groups))
         #for group in groups:
             #l = group.split()
             #label = "?"
