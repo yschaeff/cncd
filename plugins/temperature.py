@@ -1,6 +1,6 @@
 import logging as log
 from plugins.pluginskel import SkeletonPlugin
-import os, asyncio
+import os, asyncio, re
 from time import time
 from collections import defaultdict
 
@@ -22,9 +22,11 @@ class Plugin(SkeletonPlugin):
         }
         self.datastore = datastore
         self.tasks_by_handle = {}
+        self.tmp_pttrn = re.compile(r"\S+:\S+(?: /\S+)?")
 
     async def poll(self, device):
         handle = device.handle
+        await asyncio.sleep(5)
         while True:
             await device.inject('M105')
             await self.datastore.update(handle, "last_temp_request", time())
@@ -46,15 +48,31 @@ class Plugin(SkeletonPlugin):
 
         #'ok T:22.5 /0.0 B:22.6 /0.0 T0:22.5 /0.0 @:0 B@:0'
         ## does it look like a temperature message?
-        if response.startswith('T:'):
-            ## likely. Lets just try it and bail on failure
-            try:
-                chunks = response.split(" ")
-                for chunk in chunks:
-                    c = chunk.split(":")
-                    L, T = c[0], c[1]
-                    await self.datastore.update(handle, L, T)
-            except:
-                log.debug("failed to parse, maybe not tmp msg?")
+        await self.datastore.update(handle, "response", response)
+
+        groups = self.tmp_pttrn.findall(response)
+        for group in groups:
+            l = group.split()
+            label = "?"
+            for i in l:
+                index = i.find(':')
+                if index != -1:
+                    label = i[:index]
+                    data = i[index+1:]
+                else:
+                    label += " set"
+                    data = i[1:]
+                await self.datastore.update(handle, label, data)
+
+        #if response.startswith('T:'):
+            # likely. Lets just try it and bail on failure
+            #try:
+                #chunks = response.split(" ")
+                #for chunk in chunks:
+                    #c = chunk.split(":")
+                    #L, T = c[0], c[1]
+                    #await self.datastore.update(handle, L, T)
+            #except:
+                #log.debug("failed to parse, maybe not tmp msg?")
 
 
