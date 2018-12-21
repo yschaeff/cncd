@@ -22,7 +22,7 @@ class Plugin(SkeletonPlugin):
         }
         self.datastore = datastore
         self.tasks_by_handle = {}
-        self.tmp_pttrn = re.compile(r"\S+:\d+(?:\.\d+)?(?: /\d+(?:\.\d+)?)?")
+        self.tmp_pttrn = re.compile(r"[^\s:]+:\d+(?:\.\d+)?(?: /\d+(?:\.\d+)?)?")
 
     async def poll(self, device):
         handle = device.handle
