@@ -16,7 +16,7 @@ class Plugin(SkeletonPlugin):
         GPIO.setwarnings(False);
         GPIO.setmode(GPIO.BOARD)
 
-    def handle_command(self, gctx:dict, cctx:dict, lctx) -> None:
+    async def handle_command(self, gctx:dict, cctx:dict, lctx) -> None:
         argv = lctx.argv
         if len(argv) < 2:
             lctx.writeln("ERROR Must specify pin and state or pin")
@@ -45,7 +45,7 @@ class Plugin(SkeletonPlugin):
         except ValueError:
             lctx.writeln("invalid pin number")
 
-    def close(self) -> None:
+    async def close(self) -> None:
         GPIO.cleanup()
 
 

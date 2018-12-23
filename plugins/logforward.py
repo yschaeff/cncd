@@ -52,6 +52,6 @@ class Plugin(SkeletonPlugin):
 
     ## When CNCD restarts or exits the plugins get a change to properly close
     ## any resources they might hold.
-    def close(self) -> None:
+    async def close(self) -> None:
         pass
 

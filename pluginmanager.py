@@ -72,7 +72,7 @@ class PluginManager():
         log.error("Misbehaving plugin '{}' unloaded.".format(plugin.NAME))
         self.gctx["plugins"].remove(plugin)
         try:
-            plugin.close()
+            await plugin.close()
         except Exception as e:
             log.error("Plugin crashed during unloading")
             log.error(traceback.format_exc())
