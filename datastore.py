@@ -5,7 +5,7 @@ from pluginmanager import plugin_hook
 ## The datastore can be used by anyone, including plugins to store information.
 ## Reasonable contents is data to be communicated to the user at some point. 
 ## Such as progress or temperature per device.
-## convention: keys are either the handles of the cnc devices or 'global'.
+## convention: keys are either the handles of the cnc devices or 'general'.
 ## Other values are allowed such as plugin specific data
 
 class DataStore:
