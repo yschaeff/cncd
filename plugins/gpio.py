@@ -45,7 +45,7 @@ class Plugin(SkeletonPlugin):
         except ValueError:
             lctx.writeln("invalid pin number")
 
-    async def close(self) -> None:
+    def close(self) -> None:
         GPIO.cleanup()
 
 

@@ -17,6 +17,6 @@ class SkeletonPlugin():
         argv = lctx.argv
         return
 
-    async def close(self):
+    def close(self):
         pass
 
