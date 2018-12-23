@@ -107,7 +107,7 @@ class Plugin(SkeletonPlugin):
     ## This function should be a generator (so the caller can read line by line
     ## and handle any multitasking) and thus should return None (StopIteration).
     ## It yields strings which are meant to be parsed by the caller.
-    async def handle_command(self, argv:list, gctx:dict, cctx:dict, lctx) -> None:
+    async def handle_command(self, gctx:dict, cctx:dict, lctx) -> None:
         argv = lctx.argv
         if len(argv) < 2:
             lctx.writeln("ERROR Must specify device")
@@ -128,7 +128,7 @@ class Plugin(SkeletonPlugin):
 
     ## When CNCD restarts or exits the plugins get a change to properly close
     ## any resources they might hold.
-    def close(self) -> None:
+    async def close(self) -> None:
         pass
 
 
