@@ -276,9 +276,9 @@ class Device():
 
     async def abort(self):
         self.forceful_stop = True
-        await self.stop()
         ## pretend the device acknowledged so we can continue sending the abort.
         self.response_event.set()
+        self.stop_event.set()
         return True
 
     async def stop(self):
