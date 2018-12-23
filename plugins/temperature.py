@@ -36,6 +36,9 @@ class Plugin(SkeletonPlugin):
         handle = device.handle
         if handle in self.tasks_by_handle:
             return
+        connected = self.datastore.get(handle, "connected")
+        if not connected:
+            return 
         await self.datastore.update(handle, "last_temp_request", 0)
         task = asyncio.ensure_future(self.poll(device))
         self.tasks_by_handle[handle] = task
@@ -51,17 +54,3 @@ class Plugin(SkeletonPlugin):
         groups = self.tmp_pttrn.findall(response)
         if groups:
             await self.datastore.update(handle, "temperature", str(groups))
-        #for group in groups:
-            #l = group.split()
-            #label = "?"
-            #for i in l:
-                #index = i.find(':')
-                #if index != -1:
-                    #label = i[:index]
-                    #data = i[index+1:]
-                #else:
-                    #label += " set"
-                    #data = i[1:]
-                #await self.datastore.update(handle, label, data)
-
-
