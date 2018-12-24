@@ -233,7 +233,7 @@ class Device():
         with open(await self.gcode_open_hook(gcodefile)) as fd:
             for line in fd:
                 line = await self.gcode_readline_hook(line)
-                idx = line.rfind(';')
+                idx = line.find(';')
                 if idx>=0: line = line[:idx]
                 await self.send(line)
                 if not self.resume_event.is_set():
