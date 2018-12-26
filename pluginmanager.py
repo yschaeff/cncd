@@ -109,6 +109,9 @@ class PluginManager():
             except FileNotFoundError:
                 log.error("Plugin \"{}\" not found. Not activated.".format(path))
                 continue
+            except ModuleNotFoundError as e:
+                log.error("Plugin dependency not found: {}".format(e))
+                continue
             log.info("Loading plugin {}".format(path))
             try:
                 instance = plugin.Plugin(self.store, self.gctx)

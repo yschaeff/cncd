@@ -2,24 +2,41 @@
 import RPi.GPIO as GPIO
 
 import logging as log
+from collections import defaultdict
 from plugins.pluginskel import SkeletonPlugin
+from pluginmanager import Action
 
 class Plugin(SkeletonPlugin):
 
     PLUGIN_API_VERSION = 1
     NAME = "Raspberry Pi GPIO plugin"
-    PREHOOKS = {}
-    POSTHOOKS = {}
     HANDLES = ['gpio']
-    ACTIONS = [
-        Action("gpio 7 0", "Relay off", "Switch relay at rPi's GPIO pin 7 off."),
-        Action("gpio 7 1", "Relay on", "Switch relay at rPi's GPIO pin 7 on."),
-    ]
 
     def __init__(self, datastore, gctx:dict):
         self.gctx = gctx
+        cfg = self.gctx['cfg']
+        if 'gpio' in cfg:
+            cfg_gpio = cfg['gpio']
+        else:
+            cfg_gpio = defaultdict(str)
+        if cfg_gpio.get('moder') == 'bcm':
+            GPIO.setmode(GPIO.BCM)
+        else:
+            GPIO.setmode(GPIO.BOARD)
         GPIO.setwarnings(False);
-        GPIO.setmode(GPIO.BOARD)
+        ## actions
+        pinstr = cfg_gpio['pins']
+        pin_sections = [pin.strip() for pin in pinstr.split(',')]
+        for section in pin_sections:
+            if section not in cfg:
+                log.warning("Can't find config section for '{}'".format(section))
+                continue
+            label = cfg[section].get('label', 'ACTION')
+            mode = cfg[section].get('mode', 'output')
+            pin = cfg[section].get('pin',0)
+            txt = cfg[section].get('description', 'NOTSET')
+            self.ACTIONS.append(Action("gpio {} 0".format(pin), "{} off".format(label), txt))
+            self.ACTIONS.append(Action("gpio {} 1".format(pin), "{} on".format(label), txt))
 
     async def handle_command(self, gctx:dict, cctx:dict, lctx) -> None:
         argv = lctx.argv
