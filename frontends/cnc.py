@@ -77,11 +77,7 @@ class Controller():
 
     def get_actions(self, gui_cb):
         def controller_cb(lines):
-            actions = []
-            for line in lines:
-                cmd, label, description = shlex.split(line)
-                actions.append( (cmd, label, description) )
-            gui_cb(actions)
+            gui_cb(lines)
         self.protocol.send_message("actions", controller_cb)
 
     def get_camlist(self, gui_cb):
