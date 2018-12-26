@@ -11,6 +11,7 @@ class Plugin(SkeletonPlugin):
     PLUGIN_API_VERSION = 1
     NAME = "Raspberry Pi GPIO plugin"
     HANDLES = ['gpio']
+    ACTIONS = []
 
     def __init__(self, datastore, gctx:dict):
         self.gctx = gctx

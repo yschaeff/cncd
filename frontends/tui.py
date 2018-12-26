@@ -311,6 +311,31 @@ class DeviceWindow(Window):
         self.walker.append(AttrMap(button, None, focus_map='selected'))
         self.add_hotkey('l', partial(button_cb, button, locator), "load")
 
+class ActionWindow(Window):
+    def __init__(self, tui):
+        super().__init__(tui)
+        self.body.contents.append((Text("Available Actions"), ('pack', None)))
+        self.body.contents.append((Divider(), ('pack', None)))
+
+        self.walker = SimpleFocusListWalker([])
+        listbox = ListBox(self.walker)
+        self.body.contents.append((listbox, ('weight', 1)))
+        self.body.focus_position = 2
+        self.add_hotkey('u', self.update, "update")
+        self.update()
+
+    def update(self):
+        def action_cb(actions):
+            self.walker.clear()
+            def button_cb(cmd, button):
+                self.tui.controller.action(cmd, None)
+                self.tui.pop_window()
+            for cmd, label, description in actions:
+                button = Button("[{}] - {}".format(label, description))
+                urwid.connect_signal(button, 'click', button_cb, user_args=[cmd])
+                self.walker.append(AttrMap(button, None, focus_map='selected'))
+        self.tui.controller.get_actions(action_cb)
+
 class WebcamWindow(Window):
     def __init__(self, tui):
         super().__init__(tui)
@@ -348,7 +373,12 @@ class DeviceListWindow(Window):
         self.body.focus_position = 2
         self.add_hotkey('u', self.update, "update")
         self.add_hotkey('w', self.webcams, "webcams")
+        self.add_hotkey('a', self.actions, "actions")
         self.update()
+
+    def actions(self):
+        window = ActionWindow(self.tui)
+        self.tui.push_window(window)
 
     def webcams(self):
         window = WebcamWindow(self.tui)
