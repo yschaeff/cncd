@@ -1,7 +1,8 @@
+## this package is not available on regular debian, only rasbian
+import RPi.GPIO as GPIO
+
 import logging as log
 from plugins.pluginskel import SkeletonPlugin
-## this package is not available on regular debian
-import RPi.GPIO as GPIO
 
 class Plugin(SkeletonPlugin):
 
@@ -10,6 +11,10 @@ class Plugin(SkeletonPlugin):
     PREHOOKS = {}
     POSTHOOKS = {}
     HANDLES = ['gpio']
+    ACTIONS = [
+        Action("gpio 7 0", "Relay off", "Switch relay at rPi's GPIO pin 7 off."),
+        Action("gpio 7 1", "Relay on", "Switch relay at rPi's GPIO pin 7 on."),
+    ]
 
     def __init__(self, datastore, gctx:dict):
         self.gctx = gctx

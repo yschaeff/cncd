@@ -1,13 +1,17 @@
 import logging as log
-from pluginmanager import Callback
+from pluginmanager import Callback, Action
+
+# SkeletonPlungin has the minimum required functions and properties a plugin
+# MUST have. It is recommended to inherit all plugins from here.
 
 class SkeletonPlugin():
     """Inherit from this class for all Plugins"""
     NAME = "Skeleton"
-    PREHOOKS = {}
-    POSTHOOKS = {}
+    PREHOOKS = {} #of type callback
+    POSTHOOKS = {} #of type callback
     PLUGIN_API_VERSION = 0
-    HANDLES = []
+    HANDLES = [] #of type string
+    ACTIONS = [] #of type Action
 
     def __init__(self, datastore, gctx):
         self.datastore = datastore
@@ -20,3 +24,5 @@ class SkeletonPlugin():
     def close(self):
         pass
 
+    def __repr__(self):
+        return "<{}>".format(self.NAME)

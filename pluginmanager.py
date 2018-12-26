@@ -4,6 +4,7 @@ import traceback
 from collections import defaultdict, namedtuple
 
 Callback = namedtuple('Callback', 'plugin callback')
+Action = namedtuple("Action", "command short_descr long_descr")
 
 pluginmanager = None
 
@@ -57,6 +58,11 @@ class PluginManager():
         for plugin in self.gctx["plugins"]:
             for handle in plugin.HANDLES:
                 yield handle, plugin.handle_command
+
+    def get_actions(self):
+        for plugin in self.gctx["plugins"]:
+            for action in plugin.ACTIONS:
+                yield action
 
     def collect_hooks(self, instance):
         for target, callbacks in instance.PREHOOKS.items():
