@@ -141,6 +141,7 @@ class Device():
             return True
         event = asyncio.Event()
         self.response_event = asyncio.Event()
+        self.forceful_stop = False
         self.success = False
         loop = asyncio.get_event_loop()
         if not self.dummy:
@@ -184,6 +185,11 @@ class Device():
         async with self.sendlock:
             log.debug("command {}: '{}'".format(self.cfg['name'], gcode))
             if not self.handler: return ## can be true after each await!
+            ## A command can be injected before the abort. But the abort executed first
+            ## making the device never ack the injected code. So don't allow blocking
+            ## in an emergency.
+            if self.forceful_stop and wait_for_ack: return
+
             self.handler.write((gcode+'\n').encode())
             ## wait for response
             if wait_for_ack:
@@ -200,6 +206,7 @@ class Device():
                     log.debug("Sending GCODE: \"{}\"".format(gcode))
                     await self.send(gcode, wait_for_ack=False)
             await self.disconnect()
+            await asyncio.sleep(1) ## allow device to recover
             await self.connect()
         else:
             if 'stop_gcodes' in self.cfg:
