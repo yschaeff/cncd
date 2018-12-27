@@ -25,8 +25,6 @@ def plugin_hook(func):
                 log.error("plugin '{}' crashed.".format(hook.plugin.NAME))
                 log.error(traceback.format_exc())
                 pluginmanager.disable_bad_plugin(hook.plugin)
-        else:
-            log.debug("No hook registered for {} {}".format(module, qname))
         r = await func(*args, **kwargs)
         for hook in posthooks:
             if not hook.callback: continue
@@ -37,8 +35,6 @@ def plugin_hook(func):
                 log.error("plugin '{}' crashed.".format(hook.plugin.NAME))
                 log.error(traceback.format_exc())
                 pluginmanager.disable_bad_plugin(hook.plugin)
-        else:
-            log.debug("No hook registered for {} {}".format(module, qname))
         return r
     return wrapper
 
