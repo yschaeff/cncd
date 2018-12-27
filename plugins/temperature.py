@@ -26,7 +26,7 @@ class Plugin(SkeletonPlugin):
 
     async def poll(self, device):
         handle = device.handle
-        await asyncio.sleep(5)
+        await asyncio.sleep(1)
         while True:
             await device.inject('M105')
             await self.datastore.update(handle, "last_temp_request", time())
