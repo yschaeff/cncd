@@ -330,7 +330,8 @@ class ActionWindow(Window):
             def button_cb(cmd, button):
                 self.tui.controller.action(cmd, None)
                 self.tui.pop_window()
-            for cmd, label, description in self.error_filter(actions):
+            for line in self.error_filter(actions):
+                cmd, label, description = shlex.split(line)
                 button = Button("[{}] - {}".format(label, description))
                 urwid.connect_signal(button, 'click', button_cb, user_args=[cmd])
                 self.walker.append(AttrMap(button, None, focus_map='selected'))
