@@ -1,5 +1,6 @@
 ## this package is not available on regular debian, only rasbian
 import RPi.GPIO as GPIO
+import asyncio
 
 import logging as log
 from collections import defaultdict
@@ -10,7 +11,7 @@ class Plugin(SkeletonPlugin):
 
     PLUGIN_API_VERSION = 1
     NAME = "Raspberry Pi GPIO plugin"
-    HANDLES = ['gpio']
+    HANDLES = ['gpio-get', 'gpio-set']
     ACTIONS = []
 
     def __init__(self, datastore, gctx:dict):
@@ -20,7 +21,7 @@ class Plugin(SkeletonPlugin):
             cfg_gpio = cfg['gpio']
         else:
             cfg_gpio = defaultdict(str)
-        if cfg_gpio.get('moder') == 'bcm':
+        if cfg_gpio.get('mode') == 'bcm':
             GPIO.setmode(GPIO.BCM)
         else:
             GPIO.setmode(GPIO.BOARD)
@@ -36,37 +37,77 @@ class Plugin(SkeletonPlugin):
             mode = cfg[section].get('mode', 'output')
             pin = cfg[section].get('pin',0)
             txt = cfg[section].get('description', 'NOTSET')
-            self.ACTIONS.append(Action("gpio {} 0".format(pin), "{} off".format(label), txt))
-            self.ACTIONS.append(Action("gpio {} 1".format(pin), "{} on".format(label), txt))
+            action = cfg[section].get('action', '')
+            edge = cfg[section].get('edge', '')
+            pud = cfg[section].get('pud', '')
+            export = cfg[section].get('export', '')
+            self.setup(label, mode, pin, txt, action, edge, pud, export)
+
+    def setup(self.label, mode, pin, txt, action, edge, pud, export):
+        if mode == 'output':
+            GPIO.setup(pin, GPIO.OUT)
+        elif mode == 'pwm':
+            pass ## not IMPL
+        else:
+            if pud == 'down':
+                GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+            elif pud == 'up':
+                GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+            else:
+                GPIO.setup(pin, GPIO.IN)
+
+            if edge:
+                if edge == 'rising':
+                    trig = GPIO.RISING
+                elif edge == 'falling':
+                    trig = GPIO.FALLING
+                else:
+                    trig = GPIO.BOTH
+                GPIO.add_event_detect(pin, trig)
+                def edge_detect(pin, action):
+                    while True:
+                        if GPIO.event_detected(pin):
+                            #TODO don't hardcode this!
+                            state = not GPIO.input(7)
+                            GPIO.setup(7, GPIO.OUT, initial=state)
+                            # hmm. how to feed this back?
+                        await asyncio.sleep(.5)
+                task = asyncio.ensure_future(edge_detect(pin, action))
+                ## todo: abort tasks on close()
+
+        if export:
+            self.ACTIONS.append(Action("gpio-set {} 0".format(pin), "{} off".format(label), txt))
+            self.ACTIONS.append(Action("gpio-set {} 1".format(pin), "{} on".format(label), txt))
+
+
+    def gpio_set(self, argv):
+        try:
+            pin = int(argv[0])
+            state = int(argv[1])
+            if state == -1: ##toggle
+                state = not GPIO.input(pin)
+            GPIO.setup(pin, GPIO.OUT, initial=state)
+        except IndexError:
+            lctx.writeln("ERROR Must supply pin and state")
+        except ValueError:
+            lctx.writeln("ERROR invalid pin number")
+
+    def gpio_get(self, argv):
+        try:
+            pin = int(argv[0])
+            GPIO.setup(pin, GPIO.IN)
+            state = GPIO.input(pin)
+            lctx.writeln("{}:{}".format(pin, state))
+        except IndexError:
+            lctx.writeln("ERROR Must supply pin")
+        except ValueError:
+            lctx.writeln("ERROR invalid pin number")
 
     async def handle_command(self, gctx:dict, cctx:dict, lctx) -> None:
-        argv = lctx.argv
-        if len(argv) < 2:
-            lctx.writeln("ERROR Must specify pin and state or pin")
-            return
-        try:
-            pin = int(argv[1])
-        except ValueError:
-            lctx.writeln("ERROR Can't parse pin number")
-            return
-        if len(argv) < 3:
-            try:
-                GPIO.setup(pin, GPIO.IN)
-                state = GPIO.input(pin)
-                lctx.writeln("{}:{}".format(pin, state))
-            except ValueError:
-                lctx.writeln("invalid pin number")
-            return
-        try:
-            value = int(argv[2])
-        except ValueError:
-            lctx.writeln("ERROR Can't parse value")
-            return
-        state = [GPIO.HIGH, GPIO.LOW][not value]
-        try:
-            GPIO.setup(pin, GPIO.OUT, initial=state)
-        except ValueError:
-            lctx.writeln("invalid pin number")
+        if lctx.argv[0] == 'gpio-set':
+            gpio_set(lctx.argv[1:])
+        elif lctx.argv[1] == 'gpio-get':
+            gpio_get(lctx.argv[1:])
 
     def close(self) -> None:
         GPIO.cleanup()
