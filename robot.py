@@ -200,6 +200,7 @@ class Device():
                     log.debug("Sending GCODE: \"{}\"".format(gcode))
                     await self.send(gcode, wait_for_ack=False)
             await self.disconnect()
+            await self.connect()
         else:
             if 'stop_gcodes' in self.cfg:
                 gcodes = self.cfg['stop_gcodes']
