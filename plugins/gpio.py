@@ -41,9 +41,9 @@ class Plugin(SkeletonPlugin):
             edge = cfg[section].get('edge', '')
             pud = cfg[section].get('pud', '')
             export = cfg[section].get('export', '')
-            self.setup(label, mode, pin, txt, action, edge, pud, export)
+            self.setup(label, mode, int(pin), txt, action, edge, pud, export)
 
-    def setup(self.label, mode, pin, txt, action, edge, pud, export):
+    def setup(self, label, mode, pin, txt, action, edge, pud, export):
         if mode == 'output':
             GPIO.setup(pin, GPIO.OUT)
         elif mode == 'pwm':
@@ -63,8 +63,7 @@ class Plugin(SkeletonPlugin):
                     trig = GPIO.FALLING
                 else:
                     trig = GPIO.BOTH
-                GPIO.add_event_detect(pin, trig)
-                def edge_detect(pin, action):
+                async def edge_detect(pin, action):
                     while True:
                         if GPIO.event_detected(pin):
                             #TODO don't hardcode this!
@@ -72,6 +71,7 @@ class Plugin(SkeletonPlugin):
                             GPIO.setup(7, GPIO.OUT, initial=state)
                             # hmm. how to feed this back?
                         await asyncio.sleep(.5)
+                GPIO.add_event_detect(pin, trig, bouncetime=200)
                 task = asyncio.ensure_future(edge_detect(pin, action))
                 ## todo: abort tasks on close()
 
@@ -105,9 +105,9 @@ class Plugin(SkeletonPlugin):
 
     async def handle_command(self, gctx:dict, cctx:dict, lctx) -> None:
         if lctx.argv[0] == 'gpio-set':
-            gpio_set(lctx.argv[1:])
+            self.gpio_set(lctx.argv[1:])
         elif lctx.argv[1] == 'gpio-get':
-            gpio_get(lctx.argv[1:])
+            self.gpio_get(lctx.argv[1:])
 
     def close(self) -> None:
         GPIO.cleanup()
