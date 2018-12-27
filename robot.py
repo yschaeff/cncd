@@ -104,7 +104,7 @@ class Device():
             if response.startswith('ok'):
                 self.response_event.set()
             elif response == 'ERROR':
-                self.respnse_event.set()
+                self.response_event.set()
 
     def status(self):
         c = (self.handler != None)
