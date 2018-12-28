@@ -35,13 +35,14 @@ def done_cb(gctx, cctx, lctx, future):
     lctx.writeln('.')
 
 class SocketHandler(asyncio.Protocol):
-    def __init__(self, gctx):
+    def __init__(self, gctx, loopback=False):
         super().__init__()
         self.gctx = gctx
         self.cctx = {}
         self.uid = 0
         log.debug("instantiating new connection")
         self.data = ""
+        self.loopback = loopback
     def connection_made(self, transport):
         self.cctx['transport'] = transport
         prop = ['peername','sockname'][transport.get_extra_info('socket').family == socket.AF_UNIX]
@@ -83,6 +84,7 @@ class SocketHandler(asyncio.Protocol):
             cb = handlers.last_resort
         ## we have a handler, construct a local context
         def writeln(msg):
+            if self.loopback: return
             ## This function might be called by a log handler.
             ## do not emit any log messages in this func!
             line = str(msg) + '\n'

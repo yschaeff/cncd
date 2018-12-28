@@ -6,6 +6,7 @@ import logging as log
 from collections import defaultdict
 from plugins.pluginskel import SkeletonPlugin
 from pluginmanager import Action
+from cncd import SocketHandler
 
 class Plugin(SkeletonPlugin):
 
@@ -63,16 +64,12 @@ class Plugin(SkeletonPlugin):
                     trig = GPIO.FALLING
                 else:
                     trig = GPIO.BOTH
-                async def edge_detect(pin, action):
-                    while True:
-                        if GPIO.event_detected(pin):
-                            #TODO don't hardcode this!
-                            state = not GPIO.input(7)
-                            GPIO.setup(7, GPIO.OUT, initial=state)
-                            # hmm. how to feed this back?
-                        await asyncio.sleep(.5)
-                GPIO.add_event_detect(pin, trig, bouncetime=200)
-                task = asyncio.ensure_future(edge_detect(pin, action))
+                def edge_detect(pin, action):
+                    async def do(action):
+                        s = SocketHandler(self.gctx, loopback=True)
+                        s.command(action)
+                    task = asyncio.ensure_future(do(action))
+                GPIO.add_event_detect(pin, trig, edge_detect, bouncetime=200)
                 ## todo: abort tasks on close()
 
         if export:

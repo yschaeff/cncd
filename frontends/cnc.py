@@ -56,6 +56,7 @@ class CncProtocol(asyncio.Protocol):
     def error_received(self, exc):
         pass
     def connection_lost(self, exc):
+        ## TODO this might not do what we want?
         loop = asyncio.get_event_loop()
         loop.stop()
 
