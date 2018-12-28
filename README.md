@@ -142,6 +142,7 @@ letter. It is just how I would do it, roughly. Please consider them carefully.
   - ssh-copy-id MY_USER_NAME@10.0.0.29
   - ssh MY_USER_NAME@10.0.0.29
   - sudo userdel -r pi
+  - sudo rm /etc/sudoers.d/010_pi-nopasswd
 - make system user cnc and disable password auth
   - sudo vi /etc/ssh/sshd_config
     - DELETE: #PasswordAuthentication yes
