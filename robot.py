@@ -143,7 +143,7 @@ class Device():
         self.response_event = asyncio.Event()
         self.forceful_stop = False
         self.success = False
-        loop = asyncio.get_running_loop()
+        loop = self.gctx['loop']
         if not self.dummy:
             coro = serial_asyncio.create_serial_connection(loop, functools.partial(SerialConnection, self),
                 self.cfg["port"], baudrate=self.cfg["baud"])

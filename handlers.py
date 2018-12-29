@@ -204,7 +204,7 @@ async def quit(gctx, cctx, lctx):
 async def shutdown(gctx, cctx, lctx):
     """Exit at server side."""
     servers = gctx['srv']
-    loop = asyncio.get_running_loop()
+    loop = gctx['loop']
     loop.stop()
 
 async def reboot(gctx, cctx, lctx):
