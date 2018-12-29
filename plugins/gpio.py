@@ -4,9 +4,10 @@ import asyncio
 
 import logging as log
 from collections import defaultdict
+from functools import partial
 from plugins.pluginskel import SkeletonPlugin
 from pluginmanager import Action
-from cncd import SocketHandler
+from cncd import command
 
 class Plugin(SkeletonPlugin):
 
@@ -18,6 +19,7 @@ class Plugin(SkeletonPlugin):
     def __init__(self, datastore, gctx:dict):
         self.gctx = gctx
         cfg = self.gctx['cfg']
+        self.fs_at_close = []
         if 'gpio' in cfg:
             cfg_gpio = cfg['gpio']
         else:
@@ -57,20 +59,22 @@ class Plugin(SkeletonPlugin):
             else:
                 GPIO.setup(pin, GPIO.IN)
 
-            if edge:
+            if edge != '':
                 if edge == 'rising':
                     trig = GPIO.RISING
                 elif edge == 'falling':
                     trig = GPIO.FALLING
                 else:
                     trig = GPIO.BOTH
-                def edge_detect(pin, action):
-                    async def do(action):
-                        s = SocketHandler(self.gctx, loopback=True)
-                        s.command(action)
-                    task = asyncio.ensure_future(do(action))
-                GPIO.add_event_detect(pin, trig, edge_detect, bouncetime=200)
-                ## todo: abort tasks on close()
+                def edge_detect(action, pin):
+                    ## problem: this now runs in a different OS thread
+                    ## therefore make sure we use the correct loop.
+                    def do(action):
+                        command(action, self.gctx, loopback=True)
+                    loop = self.gctx['loop']
+                    loop.call_soon_threadsafe(partial(do, action))
+                GPIO.add_event_detect(pin, trig, partial(edge_detect, action), bouncetime=200)
+                self.fs_at_close.append(partial(GPIO.remove_event_detect, pin))
 
         if export:
             self.ACTIONS.append(Action("gpio-set {} 0".format(pin), "{} off".format(label), txt))
@@ -107,6 +111,8 @@ class Plugin(SkeletonPlugin):
             self.gpio_get(lctx.argv[1:])
 
     def close(self) -> None:
+        for f in self.fs_at_close:
+            f()
         GPIO.cleanup()
 
 
