@@ -13,6 +13,7 @@ class Plugin(SkeletonPlugin):
     HANDLES = []
 
     def __init__(self, datastore, gctx:dict):
+        super().__init__(datastore, gctx)
         Plugin.PREHOOKS = {
             ('robot', 'Device.disconnect'):[self.disconnect],
         }
@@ -20,7 +21,6 @@ class Plugin(SkeletonPlugin):
             ('robot', 'Device.connect'):[self.connect],
             ('robot', 'Device.incoming'):[self.incoming],
         }
-        self.datastore = datastore
         self.tasks_by_handle = {}
         self.tmp_pttrn = re.compile(r"[^\s:]+:\d+(?:\.\d+)?(?: /\d+(?:\.\d+)?)?")
 

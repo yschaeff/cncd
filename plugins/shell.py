@@ -11,6 +11,7 @@ class Plugin(SkeletonPlugin):
     ACTIONS = []
 
     def __init__(self, datastore, gctx:dict):
+        super().__init__(datastore, gctx)
         cfg = gctx['cfg']
         if 'shell' in cfg:
             cfg_shell = cfg['shell']

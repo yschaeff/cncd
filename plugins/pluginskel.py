@@ -7,8 +7,8 @@ from pluginmanager import Callback, Action
 class SkeletonPlugin():
     """Inherit from this class for all Plugins"""
     NAME = "Skeleton"
-    PREHOOKS = {} #of type callback
-    POSTHOOKS = {} #of type callback
+    PREHOOKS = {} #of type ('MODULE', 'FUNCTION):[FUNCTION]
+    POSTHOOKS = {} #of type ('MODULE', 'FUNCTION):[FUNCTION]
     PLUGIN_API_VERSION = 0
     HANDLES = [] #of type string
     ACTIONS = [] #of type Action

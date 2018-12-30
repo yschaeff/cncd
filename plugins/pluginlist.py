@@ -8,7 +8,7 @@ class Plugin(SkeletonPlugin):
     HANDLES = ['plugins']
 
     def __init__(self, datastore, gctx:dict):
-        self.gctx = gctx
+        super().__init__(datastore, gctx)
         handles = " ".join(['"{}"'.format(plugin.NAME) for plugin in gctx['plugins']])
         asyncio.ensure_future(datastore.update('general', 'plugins', handles))
 

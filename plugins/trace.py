@@ -13,11 +13,11 @@ class Plugin(SkeletonPlugin):
     HANDLES = ['subscribe', 'unsubscribe']
 
     def __init__(self, datastore, gctx:dict):
+        super().__init__(datastore, gctx)
         Plugin.POSTHOOKS = {
             ('datastore', 'DataStore.update'):[self.update],
         }
         self.handles = defaultdict(dict)
-        #[handle] = {connection:(event, writeln)}
 
     async def update(self, store, devicename, name, value):
         listeners_for_handle = self.handles[devicename]

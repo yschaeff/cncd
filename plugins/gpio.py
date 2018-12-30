@@ -17,7 +17,7 @@ class Plugin(SkeletonPlugin):
     ACTIONS = []
 
     def __init__(self, datastore, gctx:dict):
-        self.gctx = gctx
+        super().__init__(datastore, gctx)
         cfg = self.gctx['cfg']
         self.fs_at_close = []
         if 'gpio' in cfg:

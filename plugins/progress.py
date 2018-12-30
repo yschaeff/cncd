@@ -33,6 +33,7 @@ class Plugin(SkeletonPlugin):
     ## global context. It includes configuration, listening sockets etc.
     ## You SHOULD not write to gctx.
     def __init__(self, datastore, gctx:dict):
+        super().__init__(datastore, gctx)
         ## We define our actions as POSTHOOKS here. We do not need to do
         ## anything beforehand in this case.
         ## 
@@ -51,8 +52,6 @@ class Plugin(SkeletonPlugin):
             ('robot', 'Device.gcode_done_hook'):[self.done_cb],
         }
         ## The rest is specific to this plugin
-        self.datastore = datastore
-        self.gctx = gctx
         self.last_update = defaultdict(int)
         self.accumulate = defaultdict(int)
 
