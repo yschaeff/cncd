@@ -8,7 +8,6 @@ DEFAULTS = {
         "unix_socket":  "/var/run/cncd/cncd.sock",
         "config":       "/etc/cncd.conf",
         "log_level":    "ERROR",
-        "library":      "/var/lib/gcode",
         "plugin_path":  "/var/lib/cncd/plugins",
         "plugins_enabled":  "",
         "cnc_devices":  "",

@@ -80,8 +80,10 @@ async def lsdir(dirname):
             log.warning("not a file")
     return files
 
-async def stat(gctx, cctx, lctx):
-    libpath = gctx['cfg']['general']['library']
+@nargs(2)
+@parse_device
+async def stat(gctx, cctx, lctx, dev):
+    libpath = gctx['cfg'][dev.handle]['library']
     files = await lsdir(libpath)
     for f in files:
         lctx.writeln(f)

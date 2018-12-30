@@ -106,7 +106,7 @@ class Controller():
     def get_filelist(self, gui_cb, device):
         def controller_cb(lines):
             gui_cb(lines)
-        self.protocol.send_message("stat", controller_cb)
+        self.protocol.send_message("stat \"{}\"".format(device), controller_cb)
 
     def connect(self, gui_cb, device):
         def controller_cb(lines):
