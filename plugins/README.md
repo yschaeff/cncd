@@ -37,7 +37,7 @@ The simplest functionality to implement is one or multiple handlers. HANDLES MUS
 
 CNCD uses asyncio for asynchronous cooperative multitasking. This means that any function should hand back control to the scheduler in a timely fashion. You are allowed to do long running operations in handle_command but make sure the function yields regularly by for example calling
 
-    asyncio.sleep(0)
+    await asyncio.sleep(0)
 
 handle_command gets passed 3 arguments:
 

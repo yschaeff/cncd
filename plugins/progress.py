@@ -32,6 +32,8 @@ class Plugin(SkeletonPlugin):
     ## starting point for every plugin. Passed is gctx which stand for 
     ## global context. It includes configuration, listening sockets etc.
     ## You SHOULD not write to gctx.
+    ## It also gets passed a datastore. We are allowed to write information
+    ## to it that is relevant for the end user and/or other plugins.
     def __init__(self, datastore, gctx:dict):
         super().__init__(datastore, gctx)
         ## We define our actions as POSTHOOKS here. We do not need to do
@@ -51,7 +53,7 @@ class Plugin(SkeletonPlugin):
             ('robot', 'Device.gcode_readline_hook'):[self.readline_cb],
             ('robot', 'Device.gcode_done_hook'):[self.done_cb],
         }
-        ## The rest is specific to this plugin
+        ## This plugin keeps some internal administration:
         self.last_update = defaultdict(int)
         self.accumulate = defaultdict(int)
 
@@ -60,12 +62,13 @@ class Plugin(SkeletonPlugin):
     ## threaded it is super important to NOT DO ANY LONG OPERATIONS here. If
     ## you ABSOLUTELY must then occasionally "await asyncio.sleep(0)" to handle
     ## control back to the scheduler for a bit.
+    ## Make sure the function signature is compatible with the function hooked.
     async def open_cb(self, *args, **kwargs) -> None:
-        ###
-        ## devicemanager.store(self, device, key, value)
-        ###
         device, filename = args
         handle = device.handle
+        ## For the datastore the convention is to store all device specific
+        ## information with device.handle as key. System wide should
+        ## use 'general'
         await self.datastore.update(handle, "starttime", time())
         await self.datastore.update(handle, "stoptime", -1)
         await self.datastore.update(handle, "filename", filename)
@@ -77,7 +80,9 @@ class Plugin(SkeletonPlugin):
         device, = args
         handle = device.handle
         await self.datastore.update(handle, "stoptime", time())
-        ## flush
+        ## We only occationally (2Hz) write progress to the datastore as to
+        ## not load the client/CNCD to much. So when we are done we might still
+        ## have some information buffered, Flush that.
         accumulate = self.accumulate[handle]
         progress = self.datastore.get(handle, "progress")
         await self.datastore.update(handle, "progress", progress+accumulate)
@@ -86,6 +91,8 @@ class Plugin(SkeletonPlugin):
         device, line = args
         handle = device.handle
         now = time()
+        ## Assuming each character takes up one byte add lenght of string
+        ## to progress. Only every half a second write to datastore.
         self.accumulate[handle] += len(line)
         if now - self.last_update[handle] > .5:
             self.last_update[handle] = now
@@ -102,10 +109,7 @@ class Plugin(SkeletonPlugin):
     ## user/gui. If you are careful you are allowed to store information here.
     ## lctx - Local context. Only lives during the handling of this command.
     ## use as you see fit.
-    ##
-    ## This function should be a generator (so the caller can read line by line
-    ## and handle any multitasking) and thus should return None (StopIteration).
-    ## It yields strings which are meant to be parsed by the caller.
+
     async def handle_command(self, gctx:dict, cctx:dict, lctx) -> None:
         argv = lctx.argv
         if len(argv) < 2:
@@ -120,9 +124,9 @@ class Plugin(SkeletonPlugin):
             return
         device = cnc_devices[dev_id]
         handle = device.handle
-        ## find progress for the queried device
-        ## todo: total too
-        return str(self.datastore.get(handle, "progress"))
+        progress = self.datastore.get(handle, "progress")
+        total = self.datastore.get(handle, "filesize")
+        lctx.writeln("{} / {}".format(progress, total))
 
 
     ## When CNCD restarts or exits the plugins get a change to properly close
