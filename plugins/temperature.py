@@ -41,6 +41,7 @@ class Plugin(SkeletonPlugin):
             return 
         await self.datastore.update(handle, "last_temp_request", 0)
         task = asyncio.ensure_future(self.poll(device))
+        ## TODO add exception handler
         self.tasks_by_handle[handle] = task
 
     async def disconnect(self, device):

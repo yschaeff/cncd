@@ -70,6 +70,7 @@ class Device():
         self.gcode_task = None
         self.dummy = (dev_cfg["port"] == "dummy")
         self.is_printing = False
+        self.resent = False
         self.sendlock = asyncio.Lock()
         self.stop_event = asyncio.Event()
         self.resume_event = asyncio.Event()
@@ -103,8 +104,11 @@ class Device():
             log.debug("response {}: '{}'".format(self.cfg['name'], response))
             if response.startswith('ok'):
                 self.response_event.set()
-            elif response == 'ERROR':
-                self.response_event.set()
+            elif response.startswith('rs') or response.startswith('Resend'):
+                ## TODO: parse linenumber and log big fat critical if!=lastline
+                self.resent = True
+            else:
+                log.warning('Device "{}" responded with "{}"'.format(self.handle, response))
 
     def status(self):
         c = (self.handler != None)
@@ -143,6 +147,7 @@ class Device():
         self.response_event = asyncio.Event()
         self.forceful_stop = False
         self.success = False
+        self.linenumber = 0
         loop = self.gctx['loop']
         if not self.dummy:
             coro = serial_asyncio.create_serial_connection(loop, functools.partial(SerialConnection, self),
@@ -190,12 +195,26 @@ class Device():
             ## in an emergency.
             if self.forceful_stop and wait_for_ack: return
 
-            self.handler.write((gcode+'\n').encode())
-            ## wait for response
             if wait_for_ack:
-                log.debug("Waiting for device to acknowledge GCODE.")
-                await self.response_event.wait()
-                self.response_event.clear()
+                ## construct linenumber + checksum
+                self.linenumber += 1
+                ln = self.linenumber
+                with_ln = "N{} {}".format(ln, gcode).encode()
+                cs = functools.reduce(lambda a,b: a^b, with_ln)
+                with_cs = "N{} {}*{}\n".format(ln, gcode, cs).encode()
+
+                while True:
+                    self.handler.write(with_cs)
+                    ## wait for response
+                    log.debug("Waiting for device to acknowledge GCODE.")
+                    await self.response_event.wait()
+                    self.response_event.clear()
+                    if not self.resent: break
+                    log.warning("Resending GCODE")
+                    self.resent = False
+            else:
+                self.handler.write((gcode+'\n').encode())
+
 
     async def replay_abort_gcode(self):
         log.warning("Print job aborted.")
@@ -238,6 +257,8 @@ class Device():
         self.resume_event.set()
         self.is_printing = True
         self.forceful_stop = False
+        await self.send("M110 N0", wait_for_ack=False)
+        self.linenumber = 0
         with open(await self.gcode_open_hook(gcodefile)) as fd:
             for line in fd:
                 line = await self.gcode_readline_hook(line)
