@@ -108,7 +108,7 @@ class Device():
                 ## TODO: parse linenumber and log big fat critical if!=lastline
                 self.resent = True
             else:
-                log.warning('Device "{}" responded with "{}"'.format(self.handle, response))
+                log.info('Device "{}" responded with "{}"'.format(self.handle, response))
 
     def status(self):
         c = (self.handler != None)
