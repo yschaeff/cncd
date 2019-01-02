@@ -26,9 +26,11 @@ class Plugin(SkeletonPlugin):
 
     async def poll(self, device):
         handle = device.handle
-        await asyncio.sleep(1)
+        await asyncio.sleep(5)
         while True:
-            await device.inject('M105')
+            if not await device.inject('M105'):
+                log.warning("Sending time probe failed. Backing off")
+                break
             await self.datastore.update(handle, "last_temp_request", time())
             await asyncio.sleep(3)
 
@@ -51,7 +53,6 @@ class Plugin(SkeletonPlugin):
 
     async def incoming(self, device, response):
         handle = device.handle
-        #await self.datastore.update(handle, "response", response)
         groups = self.tmp_pttrn.findall(response)
         if groups:
             await self.datastore.update(handle, "temperature", str(groups))
