@@ -103,6 +103,8 @@ class Device():
                 log.error(str(e))
             except serial.serialutil.SerialException as e:
                 log.error(str(e))
+            except OSError as e:
+                log.error(str(e))
             except Exception as e:
                 log.critical("Unhandled exception: {}".format(str(e)))
                 log.critical(traceback.format_exc())
@@ -111,6 +113,7 @@ class Device():
             finally:
                 ev_done.set()
 
+        log.info("device '{}' trying to connect...".format(self.get_name()))
         ## the result must have three groups exactly"
         proto, addr, param = port_spec.findall(port)[0] ## we can only have one
         ev_done = asyncio.Event()
