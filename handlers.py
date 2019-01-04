@@ -150,19 +150,10 @@ async def status(gctx, cctx, lctx, dev):
 @signal_error
 @nargs(3)
 @parse_device
-async def load(gctx, cctx, lctx, dev):
-    """Assign gcode file to printer"""
-    argv = lctx.argv
-    filename = argv[2]
-    if await dev.load_file(filename):
-        return "Unable to load file"
-
-@signal_error
-@nargs(2)
-@parse_device
 async def start(gctx, cctx, lctx, dev):
     """start executing gcode"""
-    if not await dev.start():
+    filename = lctx.argv[2]
+    if not await dev.start(filename):
         return "Start failed"
 
 @signal_error
@@ -239,6 +230,6 @@ async def loglevel(gctx, cctx, lctx):
         return
     rootlogger.setLevel(level)
 
-handlers = [connect, disconnect, status, load, quit, shutdown, reboot, help, 
+handlers = [connect, disconnect, status, quit, shutdown, reboot, help, 
     devlist, camlist, loglevel, stat,
     start, stop, abort, pause, resume, dumpconfig, dumpgctx, dumpcctx, dumplctx]

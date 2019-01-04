@@ -63,6 +63,12 @@ class CncProtocol(asyncio.Protocol):
 class Controller():
     def __init__(self, protocol):
         self.protocol = protocol
+        self.filename = ""
+
+    def set_filename(self, filename):
+        self.filename = filename
+    def get_filename(self):
+        return self.filename
 
     def get_devlist(self, gui_cb):
         def controller_cb(lines):
@@ -120,11 +126,11 @@ class Controller():
                 gui_cb(lines)
         self.protocol.send_message("disconnect \"{}\"".format(device), controller_cb)
 
-    def start(self, gui_cb, device):
+    def start(self, gui_cb, device, filename):
         def controller_cb(lines):
             if gui_cb:
                 gui_cb(lines)
-        self.protocol.send_message("start \"{}\"".format(device), controller_cb)
+        self.protocol.send_message("start \"{}\" \"{}\"".format(device, filename), controller_cb)
 
     def abort(self, gui_cb, device):
         def controller_cb(lines):
@@ -149,12 +155,6 @@ class Controller():
             if gui_cb:
                 gui_cb(lines)
         self.protocol.send_message("resume \"{}\"".format(device), controller_cb)
-
-    def load(self, gui_cb, device, filename):
-        def controller_cb(lines):
-            if gui_cb:
-                gui_cb(lines)
-        self.protocol.send_message("load \"{}\" \"{}\"".format(device, filename), controller_cb)
 
     def start_logs(self, gui_cb):
         def controller_cb(lines):

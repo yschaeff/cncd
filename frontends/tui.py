@@ -165,11 +165,10 @@ class FileListWindow(Window):
         else:
             filtered_files = filter(p.search, self.all_files)
 
-        def load_cb(lines):
-            for line in self.error_filter(lines): pass
-            self.tui.pop_window()
         def button_cb(device, filename, button):
-            self.tui.controller.load(load_cb, self.locator, filename)
+            self.filename = filename
+            self.tui.controller.set_filename(filename)
+            self.tui.pop_window()
         self.walker.clear()
         for line in filtered_files:
             filename = line.strip()
@@ -270,7 +269,7 @@ class DeviceWindow(Window):
 
         button = Button("[s] Start")
         def button_cb(button, locator):
-            self.tui.controller.start(cmd_cb, locator)
+            self.tui.controller.start(cmd_cb, locator, self.tui.controller.get_filename())
         urwid.connect_signal(button, 'click', button_cb, locator)
         self.walker.append(AttrMap(button, None, focus_map='selected'))
         self.add_hotkey('s', partial(button_cb, button, locator), "start")

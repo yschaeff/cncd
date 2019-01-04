@@ -66,13 +66,17 @@ class Plugin(SkeletonPlugin):
     async def open_cb(self, *args, **kwargs) -> None:
         device, filename = args
         handle = device.handle
+        try:
+            size = os.path.getsize(filename)
+        except FileNotFoundError:
+            size = -1
         ## For the datastore the convention is to store all device specific
         ## information with device.handle as key. System wide should
         ## use 'general'
         await self.datastore.update(handle, "starttime", time())
         await self.datastore.update(handle, "stoptime", -1)
         await self.datastore.update(handle, "filename", filename)
-        await self.datastore.update(handle, "filesize", os.path.getsize(filename))
+        await self.datastore.update(handle, "filesize", size)
         await self.datastore.update(handle, "progress", 0)
         self.accumulate[handle] = 0
 

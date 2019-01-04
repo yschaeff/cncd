@@ -3,18 +3,28 @@ import logging as log
 class GenericFirmware:
     max_buffer_lenght = 1
     checksums = True
-    
+    stop_gcodes = ['M104 S0', 'M140 S0']
+    abort_gcodes = ['M112']
+    recover_gcodes = ['M999']
+
+    def __init__(self):
+        self.prompt = ""
+
+    def is_ack(self, line):
+        return line.startswith('ok')
+
     def set_next_linenumber(self, n:int):
         """after sending this gcode the printer should expect line n"""
         return "M110 N{}".format(n)
     def strip_prompt(self, line):
         if self.prompt and line.startswith(self.prompt):
-            return line[len(prompt):]
+            return line[len(self.prompt):]
         else:
             return line
 
 class MarlinFirmware(GenericFirmware):
-    prompt = ""
+    def __init__(self):
+        self.prompt = ""
 
 class SmoothieFirmware(GenericFirmware):
     prompt = "> "
