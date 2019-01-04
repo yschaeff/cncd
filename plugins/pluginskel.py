@@ -1,7 +1,7 @@
 import logging as log
 from pluginmanager import Callback, Action
 
-# SkeletonPlungin has the minimum required functions and properties a plugin
+# SkeletonPlugin has the minimum required functions and properties a plugin
 # MUST have. It is recommended to inherit all plugins from here.
 
 class SkeletonPlugin():

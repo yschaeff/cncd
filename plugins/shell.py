@@ -18,7 +18,8 @@ class Plugin(SkeletonPlugin):
         else:
             cfg_shell = defaultdict(str)
         for key, value in cfg_shell.items():
-            self.ACTIONS.append(Action("shell {}".format(shlex.quote(value)), key, "??"))
+            quoted = shlex.quote(value)
+            self.ACTIONS.append(Action("shell {}".format(quoted), key, "({})".format(value)))
 
     async def handle_command(self, gctx, cctx, lctx):
         if len(lctx.argv) != 2:
