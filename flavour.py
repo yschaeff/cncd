@@ -1,14 +1,11 @@
 import logging as log
 
 class GenericFirmware:
-    max_buffer_lenght = 1
-    checksums = True
-    stop_gcodes = ['M104 S0', 'M140 S0']
-    abort_gcodes = ['M112']
-    recover_gcodes = ['M999']
-
     def __init__(self):
-        self.prompt = ""
+        self.prompt             = ""
+        self.max_buffer_lenght  = 1
+        self.stop_gcodes        = ['M104 S0', 'M140 S0']
+        self.abort_gcodes       = ['M112']
 
     def is_ack(self, line):
         return line.startswith('ok')
@@ -16,6 +13,7 @@ class GenericFirmware:
     def set_next_linenumber(self, n:int):
         """after sending this gcode the printer should expect line n"""
         return "M110 N{}".format(n)
+
     def strip_prompt(self, line):
         if self.prompt and line.startswith(self.prompt):
             return line[len(self.prompt):]
@@ -24,17 +22,18 @@ class GenericFirmware:
 
 class MarlinFirmware(GenericFirmware):
     def __init__(self):
+        super().__init__()
         self.prompt = ""
 
 class SmoothieFirmware(GenericFirmware):
-    prompt = "> "
-    max_buffer_lenght = 10
-    ## disable checksumming for this device because it will add .5 seconds
-    ## delay!
-    checksums = False
+    ## ONLY TESTED CONNECTED TO TELNET FOR SERIAL SETTINGS MAY DIFFER
+    def __init__(self):
+        super().__init__()
+        self.prompt = "> "
+        self.max_buffer_lenght = 10
+
     def set_next_linenumber(self, n:int):
         return "N{} M110".format(n)
-
 
 
 def get_firmware(name):
@@ -48,5 +47,4 @@ def get_firmware(name):
         log.warning("Firmware dialect ({}) not known, defaulting to generic.")
         FW = GenericFirmware
     return FW()
-    
 
