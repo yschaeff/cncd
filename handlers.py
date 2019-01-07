@@ -84,6 +84,8 @@ async def lsdir(dirname):
 @parse_device
 async def stat(gctx, cctx, lctx, dev):
     libpath = gctx['cfg'][dev.handle]['library']
+    if libpath.endswith('/'):
+        libpath = libpath[:-1]
     files = await lsdir(libpath)
     for f in files:
         lctx.writeln(f)
