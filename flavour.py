@@ -10,6 +10,9 @@ class GenericFirmware:
     def is_ack(self, line):
         return line.startswith('ok')
 
+    def is_error(self, line):
+        return line.startswith('!!')
+
     def set_next_linenumber(self, n:int):
         """after sending this gcode the printer should expect line n"""
         return "M110 N{}".format(n)
@@ -25,12 +28,15 @@ class MarlinFirmware(GenericFirmware):
         super().__init__()
         self.prompt = ""
 
+    def is_error(self, line):
+        return line.startswith('ERROR:')
+
 class SmoothieFirmware(GenericFirmware):
     ## ONLY TESTED CONNECTED TO TELNET FOR SERIAL SETTINGS MAY DIFFER
     def __init__(self):
         super().__init__()
         self.prompt = "> "
-        self.max_buffer_lenght = 10
+        self.max_buffer_lenght = 20
 
     def set_next_linenumber(self, n:int):
         return "N{} M110".format(n)

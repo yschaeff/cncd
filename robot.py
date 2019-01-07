@@ -7,8 +7,6 @@ import os, re, traceback
 from pluginmanager import plugin_hook
 import flavour
 
-#TODO detect connection success AND failure
-
 class DummySerialConnection():
     def __init__(self, device, rx_queue):
         self.rx_queue = rx_queue
@@ -209,6 +207,10 @@ class Device():
             if self.firmware.is_ack(line):
                 if not ack_queue.empty():
                     _ = await ack_queue.get()
+            elif self.firmware.is_error(line):
+                if not ack_queue.empty():
+                    _ = await ack_queue.get()
+
 
     async def inject(self, gcode):
         if not self.ev_connected.is_set():
