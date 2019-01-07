@@ -7,6 +7,7 @@ import logging as log
 import shlex
 import argparse, time, subprocess
 from configparser import ConfigParser
+from os.path import expanduser
 
 class CncProtocol(asyncio.Protocol):
     def __init__(self):
@@ -168,8 +169,9 @@ class Controller():
 
 def main(loop, args):
     cfg = ConfigParser()
-    if not cfg.read(args.config):
-        log.critical("Could not open configuration file")
+    cfgfile = expanduser(args.config)
+    if not cfg.read(cfgfile):
+        log.critical("Could not open configuration file ({})".format(args.config))
         return
     if not args.instance in cfg.sections():
         log.critical("No configuration for '{}' found.".format(args.instance))
@@ -228,7 +230,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("instance", metavar="INSTANCE", nargs='?', action="store",
             default="default", help="Instance to connect to. ('default' when not specified)")
-    parser.add_argument("-c", "--config", action="store", default='./cnc.conf')
+    parser.add_argument("-c", "--config", action="store", default='~/.config/cnc.conf')
     parser.add_argument("-l", "--log-level",
             choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
             type=str.upper, action="store", default='WARNING')
