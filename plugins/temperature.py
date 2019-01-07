@@ -1,10 +1,10 @@
 import logging as log
-from plugins.pluginskel import SkeletonPlugin
+from plugins.pluginskel import SkeletonPlugin, ConfigPlugin
 import os, asyncio, re, concurrent, traceback
 from time import time
 from collections import defaultdict
 
-class Plugin(SkeletonPlugin):
+class Plugin(SkeletonPlugin, ConfigPlugin):
 
     PLUGIN_API_VERSION = 1
     NAME = "Temperature"
@@ -24,6 +24,13 @@ class Plugin(SkeletonPlugin):
         self.tasks_by_handle = {}
         self.tmp_pttrn = re.compile(r"[^\s:]+:\d+(?:\.\d+)?(?: /\d+(?:\.\d+)?)?")
 
+        cfg = self.config('temperature')
+        self.blacklist = []
+        if cfg:
+            try:
+                self.blacklist = [i.strip() for i in cfg['blacklist'].split(',')]
+            except KeyError:
+                pass ## not configured, all devices are okay
     
     def poll_cb(self, future):
         """Generic callback for tasks"""
@@ -46,11 +53,12 @@ class Plugin(SkeletonPlugin):
 
     async def connect(self, device):
         handle = device.handle
+        if handle in self.blacklist: return
         if handle in self.tasks_by_handle:
             return
         connected = self.datastore.get(handle, "connected")
         if not connected:
-            return 
+            return
         await self.datastore.update(handle, "last_temp_request", 0)
         task = asyncio.ensure_future(self.poll(device))
         task.add_done_callback(self.poll_cb)

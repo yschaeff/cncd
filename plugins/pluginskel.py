@@ -26,3 +26,11 @@ class SkeletonPlugin():
 
     def __repr__(self):
         return "<{}>".format(self.NAME)
+
+class ConfigPlugin():
+    def config(self, name):
+        cfg = self.gctx['cfg']
+        if name in cfg:
+            return cfg[name]
+        else:
+            return None
