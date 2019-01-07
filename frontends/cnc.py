@@ -195,7 +195,7 @@ def main(loop, args):
     try:
         transport, protocol = loop.run_until_complete(future)
     except ConnectionRefusedError as e:
-        log.critical("Unable to set up connection")
+        log.critical("Unable to set up connection for [{}] to '{}'".format(args.instance, socketpath))
         if shell_pre: pre.kill()
         if shell_post: post = subprocess.Popen(shlex.split('"{}"'.format(shell_post)))
         return
