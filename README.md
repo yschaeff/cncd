@@ -13,14 +13,14 @@ write this software.*
 
 *DISCLAIMER 2: I present this software as an octoprint alternative. In practice
 Octoprint handles hunderdths of configurations and corner cases. I only tried
-and tested *my configuration*. It will probably not work for you yet.*
+and tested *my configuration*. It might not work for you yet.*
 
 ![Logo](https://github.com/yschaeff/cncd/raw/master/images/cncd.png)
 
-CNCD (which stands for Computer Numerical Control Daemon) is server software
+CNCD (which stands for CNC Daemon) is server software
 to control CNC devices and manage them remotely. It aims to control any CNC
 device (e.g. 3D printer, router, laser cutter) that accepts GCODE commands via
-its serial port.
+its serial port or TCP socket.
 
 It is designed to run on a Linux host, specifically a Raspberry Pi single
 board computer running Raspbian. However any similar OS with Python version 3.5
@@ -33,7 +33,7 @@ or beyond and the required python dependencies should work.
 - Allows multiple clients to connect and control devices.
 - Pause/resume operation
 - Safe for the Internet.
-- Preliminary plugin support
+- Plugin support
 
 ## non-features
 I.e. the thing we purposely do NOT support.
@@ -45,7 +45,7 @@ I.e. the thing we purposely do NOT support.
 - No serial port auto discovery.
 - No interface for humans, no webserver.
 
-## Your features and non-features conflict you twat!
+## Your features and non-features conflict!
 
 You are absolutely right. Allow me to explain some of them.
 
@@ -73,7 +73,7 @@ In comparison. CNCD takes about 3 seconds to start on an rPI1 (mostly due to
 a slow SD card).
 
 I do like to keep things as simple as possible. Though I did implement a plugin
-system of sorts. This complicates the design but in a recent Octoprint on air
+system. This complicates the design but in a recent Octoprint on air
 episode Gina mentioned the plugin system in Octoprint actually helps to reduce
 code complexity over time!
 
@@ -81,22 +81,15 @@ code complexity over time!
 CNCD is designed from the ground up to support and operate multiple CNC devices
 simultaneously. It tries to be agnostic about the nature of the CNC device. It should
 be able to operate a CNC router as well as a 3D printer as well as a laser cutter.
-As long as they accept commands over the Serial port.
-
-Caveat: I do not actually own multiple CNC devices! I only have a 3D printer. And
-thus can hardly test it.
-
-Caveat 2: Since I only have a "Prusa i3 MK2s" I have no idea how other devices
-respond over the serial port. It might be utterly broken for your device until
-we make the firmware-flavour configurable in CNCD.
+As long as they accept commands over the serial port or a TCP socket.
 
 ### No file management
 There is deliberately no code to manage your gcode collection. Just a pointer
 to where your files are stored. Want to send files to your printer? Use rsync,
-samba, nfs or Dropbox for all I care!
+samba, nfs, or use your imagination.
 
 ### No GUI
-That right. We don't run a webserver or any other form of GUI. We just open
+We don't run a webserver or any other form of GUI. We just open
 a socket and wait for other software to send us commands. The protocol is ASCII
 and line based so you could totally use netcat if you are *that* kind of person.
 
@@ -216,26 +209,63 @@ WantedBy=multi-user.target
 [general]
 unix_socket = /var/run/cncd/cncd.sock
 log_level = warning
-library = /home/cnc/gcode
 plugin_path = /home/cnc/cncd/plugins
-plugins_enabled = progress, gpio
-cnc_devices = i3,dumdum
+plugins_enabled = progress, gpio, pluginlist, data, logforward, trace, temperature, actions, shell
+cnc_devices = prusa_i3, zmorph, franken_plotter
 cameras = cam1
 
-[i3]
+[prusa_i3]
 name = Prusa i3 MK2s
-port = /dev/ttyPRUSA_i3
-baud = 115200
-abort_gcodes = M108
-stop_gcodes = M104 S0 ; M140 S0
+port = serial:///dev/ttyACM0@115200
+library = ./gcode/
+firmware = marlin
 
-[dumdum]
-name = dummy printer
-port = dummy
-baud = 115200
-abort_gcodes = G10;  G10
+[franken_plotter]
+name = plotter
+port = serial:///dev/ttyUSB0@115200
+library = ./gcode/
+firmware = generic
+
+[zmorph]
+name = Zmorph VX
+port = tcp://192.168.0.176:23
+library = /home/yuri/repo/3d-models/zmorph/printer/
+firmware = smoothie
 
 [cam1]
 name = Okki
 url = http://10.0.0.90:8080/?action=stream
+
+## PLUGIN SPECIFIC CONFIGURATION ##
+
+## TEMPERATURE ##
+
+[temperature]
+blacklist = plotter, foo
+
+## GPIO ##
+
+[gpio]
+mode = board
+pins = relay, button
+
+[relay]
+pin = 7
+mode = output
+label = Relay
+description = This relay switches both the light and the Prusa printer.
+export = True
+
+[button]
+pin = 4
+mode = input
+pud = up
+action = gpio 7 -1
+edge = falling
+
+## SHELL ##
+
+[shell]
+start webcam = sudo systemctl start videoC270.service
+stop webcam = sudo systemctl stop videoC270.service
 ```
