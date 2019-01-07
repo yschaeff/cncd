@@ -6,6 +6,7 @@ from functools import partial
 import logging as log
 import shlex
 import argparse, time, subprocess
+from configparser import ConfigParser
 
 class CncProtocol(asyncio.Protocol):
     def __init__(self):
@@ -166,52 +167,40 @@ class Controller():
         self.protocol.send_message("tracelog stop", flush=True)
 
 def main(loop, args):
-    CFG_DEFAULTS =  {'general':{
-        'shell_pre': "",
-        'shell_post': "",
-        'unix_socket': '/tmp/cncd.sock',
-        'config': './cnc.conf',
-    }}
-
-    from configparser import ConfigParser
     cfg = ConfigParser()
-    cfg.read_dict(CFG_DEFAULTS)
-    general = cfg['general']
-    ## first overwrite config location with cfg supplied on commandline
-    if args.config:
-        general['config'] = args.config
-    ## Then open config
-    if not cfg.read(general["config"]):
-        log.info("Could not load any configuration file, continue with defaults.")
+    if not cfg.read(args.config):
+        log.critical("Could not open configuration file")
+        return
+    if not args.instance in cfg.sections():
+        log.critical("No configuration for '{}' found.".format(args.instance))
+        log.critical("Available: '{}'".format(cfg.sections()))
+        return
+    if not cfg.has_section(args.instance):
+        log.critical("No configuration section '[{}]' found.".format(args.instance))
+        return
 
-    ## Now, let anything in args overwrite defaults
-    for arg, value in vars(args).items():
-        if value == None: continue
-        log.debug("Overwriting default value for {} with {}".format(arg, value))
-        general[arg] = str(value)
+    shell_pre = cfg.get(args.instance, 'shell_pre', fallback=None)
+    shell_pre_sleep = cfg.get(args.instance, 'shell_pre_sleep', fallback=None)
+    shell_post = cfg.get(args.instance, 'shell_post', fallback=None)
+    unix_socket = cfg.get(args.instance, 'unix_socket', fallback="")
 
-    if general['shell_pre']:
-        pre = subprocess.Popen(shlex.split('"{}"'.format(general['shell_pre'])))
-        if general['shell_pre_sleep']:
-            time.sleep(float(general['shell_pre_sleep']))
+    if shell_pre:
+        pre = subprocess.Popen(shlex.split('"{}"'.format(shell_pre)))
+        if shell_pre_sleep: time.sleep(float(shell_pre_sleep))
 
-    socketpath = general['unix_socket']
-    future = loop.create_unix_connection(partial(CncProtocol), socketpath)
+    socketpath = unix_socket
+    future = loop.create_unix_connection(partial(CncProtocol), unix_socket)
     try:
         transport, protocol = loop.run_until_complete(future)
     except ConnectionRefusedError as e:
         log.critical("Unable to set up connection")
-        if general['shell_pre']:
-            pre.kill()
-        if general['shell_post']:
-            post = subprocess.Popen(shlex.split('"{}"'.format(general['shell_post'])))
+        if shell_pre: pre.kill()
+        if shell_post: post = subprocess.Popen(shlex.split('"{}"'.format(shell_post)))
         return
     except FileNotFoundError as e:
         log.critical("Unix domain socket '{}' might not exist.".format(socketpath))
-        if general['shell_pre']:
-            pre.kill()
-        if general['shell_post']:
-            post = subprocess.Popen(shlex.split('"{}"'.format(general['shell_post'])))
+        if shell_pre: pre.kill()
+        if shell_post: post = subprocess.Popen(shlex.split('"{}"'.format(shell_post)))
         return
 
     controller = Controller(protocol)
@@ -224,26 +213,22 @@ def main(loop, args):
 
     if protocol.gui_exception:
         log.critical("Exception raised in GUI callback function:")
-        if general['shell_pre']:
-            pre.kill()
-        if general['shell_post']:
-            post = subprocess.Popen(shlex.split('"{}"'.format(general['shell_post'])))
+        if shell_pre: pre.kill()
+        if shell_post: post = subprocess.Popen(shlex.split('"{}"'.format(shell_post)))
         raise protocol.gui_exception
     log.debug("terminating")
     transport.close()
     pending = asyncio.Task.all_tasks()
     for task in pending: task.cancel()
     loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
-    if general['shell_pre']:
-        pre.kill()
-    if general['shell_post']:
-        post = subprocess.Popen(shlex.split('"{}"'.format(general['shell_post'])))
+    if shell_pre: pre.kill()
+    if shell_post: post = subprocess.Popen(shlex.split('"{}"'.format(shell_post)))
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--config", action="store")
-    parser.add_argument("-u", "--unix-socket", help="Path to server socket",
-            action="store")
+    parser.add_argument("instance", metavar="INSTANCE", nargs='?', action="store",
+            default="default", help="Instance to connect to. ('default' when not specified)")
+    parser.add_argument("-c", "--config", action="store", default='./cnc.conf')
     parser.add_argument("-l", "--log-level",
             choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
             type=str.upper, action="store", default='WARNING')
