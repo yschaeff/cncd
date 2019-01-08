@@ -135,6 +135,7 @@ class FileListWindow(Window):
 
         self.locator = locator
         self.device = device
+        self.all_files = []
 
         def limit(regexp):
             self.regexp = regexp
