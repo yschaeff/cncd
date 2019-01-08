@@ -3,6 +3,7 @@
 import asyncio, concurrent
 import tui
 from functools import partial
+from collections import defaultdict
 import logging as log
 import shlex
 import argparse, time, subprocess
@@ -65,12 +66,12 @@ class CncProtocol(asyncio.Protocol):
 class Controller():
     def __init__(self, protocol):
         self.protocol = protocol
-        self.filename = ""
+        self.filenames = defaultdict(str)
 
-    def set_filename(self, filename):
-        self.filename = filename
-    def get_filename(self):
-        return self.filename
+    def set_filename(self, device, filename):
+        self.filenames[device] = filename
+    def get_filename(self, device):
+        return self.filenames[device]
 
     def get_devlist(self, gui_cb):
         def controller_cb(lines):

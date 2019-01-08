@@ -168,7 +168,7 @@ class FileListWindow(Window):
 
         def button_cb(device, filename, button):
             self.filename = filename
-            self.tui.controller.set_filename(filename)
+            self.tui.controller.set_filename(device, filename)
             self.tui.pop_window()
         self.walker.clear()
         for line in filtered_files:
@@ -270,7 +270,7 @@ class DeviceWindow(Window):
 
         button = Button("[s] Start")
         def button_cb(button, locator):
-            self.tui.controller.start(cmd_cb, locator, self.tui.controller.get_filename())
+            self.tui.controller.start(cmd_cb, locator, self.tui.controller.get_filename(self.device))
         urwid.connect_signal(button, 'click', button_cb, locator)
         self.walker.append(AttrMap(button, None, focus_map='selected'))
         self.add_hotkey('s', partial(button_cb, button, locator), "start")
