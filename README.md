@@ -189,7 +189,7 @@ created before start. (the cnc user is not allowed to do this itself)
 
 ```ini
 [Unit]
-Description=Computer Numerical Control Deamon
+Description=CNC Daemon
 
 [Service]
 ExecStart=/home/cnc/cncd/cncd.py
@@ -266,6 +266,31 @@ edge = falling
 ## SHELL ##
 
 [shell]
+# These commands are explicity configured in /etc/sudoers
 start webcam = sudo systemctl start videoC270.service
 stop webcam = sudo systemctl stop videoC270.service
 ```
+
+### CNC Config (client)
+
+The TUI client can be found in the frontends directory and started with ./cnc.py. I suggest making a softlink to it in /usr/local/bin/. For example '''sudo /home/yuri/repo/cncd/frontend/cnc.py -s cnc'''
+It accepts a -c parameter for the configuration file. If not specified it will try
+'~/.config/cnc.conf'. It will also accept the name of CNCD instance if configured.
+
+''' vi ~/.config/cnc.conf '''
+
+'''ini
+## Default instance to connect to
+[default]
+unix_socket = /home/yuri/repo/cncd/.cncd.sock
+
+[okki]
+shell_pre = "/usr/bin/ssh -L %(unix_socket)s:/var/run/cncd/cncd.sock -nNT cnc@10.0.0.34 -p 22"
+shell_pre_sleep = 1
+shell_post = "/bin/rm -f %(unix_socket)s"
+unix_socket = /tmp/cncd.sock
+'''
+
+To connect to the remote client above type: '''cnc okki'''
+The unix domain socket will be tunneled over SSH giving you a secure connection
+to CNCD.
