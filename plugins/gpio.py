@@ -1,6 +1,7 @@
 ## this package is not available on regular debian, only rasbian
 import RPi.GPIO as GPIO
 import asyncio
+import time
 
 import logging as log
 from collections import defaultdict
@@ -67,6 +68,16 @@ class Plugin(SkeletonPlugin):
                 else:
                     trig = GPIO.BOTH
                 def edge_detect(action, pin):
+                    pre = GPIO.input(pin)
+                    if (edge == 'rising' and not pre) or (edge == 'falling' and pre):
+                        log.warning("GPIO spurious event. Ignoring.")
+                        return
+                    time.sleep(0.2) ## This is outside async loop, thus okay.
+                    post = GPIO.input(pin)
+                    if pre != post:
+                        log.info("GPIO event stopped by debounce filter")
+                        return
+
                     ## problem: this now runs in a different OS thread
                     ## therefore make sure we use the correct loop.
                     def do(action):
