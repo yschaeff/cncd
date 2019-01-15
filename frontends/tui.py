@@ -202,7 +202,7 @@ class DeviceWindow(Window):
         self.walker = SimpleFocusListWalker([])
         listbox = ListBox(self.walker)
         self.body.contents.append((listbox, ('weight', 1)))
-        self.body.focus_position = 4
+        self.body.focus_position = 5
         self.add_hotkey('u', self.update, "update")
         self.status = defaultdict(str)
         self.update()
@@ -276,6 +276,10 @@ class DeviceWindow(Window):
 
         button = Button("[s] Start")
         def button_cb(button, locator):
+            fn = self.tui.controller.get_filename(locator)
+            if not fn:
+                self.footer.set_text("Please Select a file first")
+                return
             self.tui.controller.start(cmd_cb, locator, self.tui.controller.get_filename(locator))
         urwid.connect_signal(button, 'click', button_cb, locator)
         self.walker.append(AttrMap(button, None, focus_map='selected'))
