@@ -166,15 +166,15 @@ class FileListWindow(Window):
         else:
             filtered_files = filter(p.search, self.all_files)
 
-        def button_cb(device, filename, button):
+        def button_cb(locator, filename, button):
             self.filename = filename
-            self.tui.controller.set_filename(device, filename)
+            self.tui.controller.set_filename(locator, filename)
             self.tui.pop_window()
         self.walker.clear()
         for line in filtered_files:
             filename = line.strip()
             button = Button(filename)
-            urwid.connect_signal(button, 'click', button_cb, user_args=[self.device, filename])
+            urwid.connect_signal(button, 'click', button_cb, user_args=[self.locator, filename])
             self.walker.append(AttrMap(button, None, focus_map='selected'))
 
     def update(self):
@@ -187,6 +187,9 @@ class DeviceWindow(Window):
     def __init__(self, tui, locator, device):
         super().__init__(tui)
         self.body.contents.append((Text("Selected device \"{}\"".format(device)), ('pack', None)))
+        fn = self.tui.controller.get_filename(locator)
+        self.filename_txt = Text("Selected file \"{}\"".format(fn))
+        self.body.contents.append((self.filename_txt, ('pack', None)))
         self.body.contents.append((Divider(), ('pack', None)))
 
         self.statuswidget = Pile([])
@@ -254,6 +257,9 @@ class DeviceWindow(Window):
             for line in self.error_filter(lines): pass
             self.update_status()
 
+        fn = self.tui.controller.get_filename(locator)
+        self.filename_txt.set_text("Selected file \"{}\"".format(fn))
+
         button = Button("[c] Connect")
         def button_cb(button, locator):
             self.tui.controller.connect(cmd_cb, locator)
@@ -270,7 +276,7 @@ class DeviceWindow(Window):
 
         button = Button("[s] Start")
         def button_cb(button, locator):
-            self.tui.controller.start(cmd_cb, locator, self.tui.controller.get_filename(self.device))
+            self.tui.controller.start(cmd_cb, locator, self.tui.controller.get_filename(locator))
         urwid.connect_signal(button, 'click', button_cb, locator)
         self.walker.append(AttrMap(button, None, focus_map='selected'))
         self.add_hotkey('s', partial(button_cb, button, locator), "start")
