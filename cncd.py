@@ -87,7 +87,7 @@ class SocketHandler(asyncio.Protocol):
         prop = ['peername','sockname'][transport.get_extra_info('socket').family == socket.AF_UNIX]
         src = transport.get_extra_info(prop)
         log.info('Connection from {}'.format(src))
-        transport.write("## cncd version 1, api version 1\n".encode())
+        transport.write("## CNCD\n".encode())
     def connection_lost(self, ex):
         log.info('Closed connection')
     def eof_received(self):

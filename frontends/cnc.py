@@ -41,7 +41,6 @@ class CncProtocol(asyncio.Protocol):
             except ValueError:
                 continue
             if nonce not in self.waiters:
-                assert(nonce in self.waiters) # remove me!
                 continue
             handler, buf, flush = self.waiters[nonce]
             if line.strip() == ".":
@@ -67,6 +66,7 @@ class Controller():
     def __init__(self, protocol):
         self.protocol = protocol
         self.filenames = defaultdict(str)
+        self.hello()
 
     def set_filename(self, device, filename):
         self.filenames[device] = filename
@@ -84,6 +84,23 @@ class Controller():
 
     def action(self, cmd, gui_cb):
         self.protocol.send_message(cmd, None)
+
+    def hello(self):
+        self.time_offset = 0
+        self.cncd_version = 0
+        self.api_version = 0
+        def controller_cb(lines):
+            for line in lines:
+                r = line.split()
+                if len(r) != 2: continue
+                key, value = r
+                if key == 'version':
+                    self.cncd_version = int(value)
+                elif key == 'api':
+                    self.api_version = int(value)
+                elif key == 'time':
+                    self.time_offset = time.time() - float(value)
+        self.protocol.send_message("hello", controller_cb)
 
     def get_actions(self, gui_cb):
         def controller_cb(lines):
@@ -192,7 +209,7 @@ def main(loop, args):
         if shell_pre_sleep: time.sleep(float(shell_pre_sleep))
 
     socketpath = unix_socket
-    future = loop.create_unix_connection(partial(CncProtocol), unix_socket)
+    future = loop.create_unix_connection(CncProtocol, unix_socket)
     try:
         transport, protocol = loop.run_until_complete(future)
     except ConnectionRefusedError as e:

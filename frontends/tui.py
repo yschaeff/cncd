@@ -224,6 +224,57 @@ class DeviceWindow(Window):
                 value = item[i+1:]
                 self.status[key] = value
 
+        def parse_time(status, container, ignore):
+            try:
+                tstart = float(status['starttime'])
+                tstop = float(status['stoptime'])
+                offset = self.tui.controller.time_offset
+                if tstop == -1:
+                    d = time.time() - tstart - offset
+                else:
+                    d = tstop - tstart
+                t = time.asctime( time.localtime(tstart+offset) )
+                txt = "Started at {} ({}h{}m)".format(t, int(d/3600), int(d%3600)//60)
+                attr = 'Flabel'
+                w = AttrMap(Text(txt), attr, attr)
+                container.contents.append((w, container.options('pack')))
+            except ValueError:
+                pass
+            finally:
+                ignore.append('starttime')
+                #ignore.append('stoptime') ## leave for debugging for now
+
+        def parse_progress(status, container, ignore):
+            try:
+                fsize = int(status['filesize'])
+                fprog = int(status['progress'])
+                tstart = float(status['starttime'])
+                tstop = float(status['stoptime'])
+                offset = self.tui.controller.time_offset
+                if tstop == -1:
+                    d = time.time() - tstart - offset
+                else:
+                    d = tstop - tstart
+                rate = fprog/fsize
+                attr = 'Flabel'
+                w = AttrMap(Text("progress: {}/{} ({:0.2f}%) ({}B/s)".format(fprog, fsize, rate*100, int(fprog/d))), attr, attr)
+                container.contents.append((w, container.options('pack')))
+            except:
+                pass
+            finally:
+                ignore.append('filesize')
+                ignore.append('progress')
+
+        def parse_status(status, container, ignore):
+            stat_cols = Columns([], 0)
+            w = make_w(stat_cols, 'connected', 'connected', 'disconnected')
+            w = make_w(stat_cols, 'idle', 'active', 'idle', reverse=True)
+            w = make_w(stat_cols, 'paused', 'paused', 'operating')
+            container.contents.append((stat_cols, container.options('pack')))
+            ignore.append('connected')
+            ignore.append('idle')
+            ignore.append('paused')
+
         def make_w(container, key, Tlabel, Flabel, reverse=False):
             if (self.status[key] == 'True') ^ reverse:
                 label = "[{}]".format(Tlabel)
@@ -233,15 +284,16 @@ class DeviceWindow(Window):
                 attr = 'Flabel'
             w = AttrMap(Text(label), attr, attr)
             container.contents.append((w, container.options('pack')))
-        # We really not to properly parse this to some truct first
+        ignore = ['last_temp_request']
+        # We really got to properly parse this to some struct first
         container.contents.clear()
-        stat_cols = Columns([], 0)
-        w = make_w(stat_cols, 'connected', 'connected', 'disconnected')
-        w = make_w(stat_cols, 'idle', 'active', 'idle', reverse=True)
-        w = make_w(stat_cols, 'paused', 'paused', 'operating')
-        container.contents.append((stat_cols, container.options('pack')))
+        ## progress
+        parse_status(self.status, container, ignore)
+        parse_progress(self.status, container, ignore)
+        parse_time(self.status, container, ignore)
+
         for key, value in sorted(self.status.items()):
-            if key in ['connected', 'idle', 'paused']: continue
+            if key in ignore: continue
             attr = 'Flabel'
             w = AttrMap(Text("{}: {}".format(key, value)), attr, attr)
             container.contents.append((w, container.options('pack')))

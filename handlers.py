@@ -3,6 +3,7 @@ import asyncio
 import logging as log
 import os
 import traceback
+import time
 
 """
 gctx - Global context. No direct writes allowed. Exists during lifetime of program.
@@ -89,6 +90,12 @@ async def stat(gctx, cctx, lctx, dev):
     files = await lsdir(libpath)
     for f in files:
         lctx.writeln(f)
+
+async def hello(gctx, cctx, lctx):
+    """version etc"""
+    lctx.writeln("version 1")
+    lctx.writeln("api 1")
+    lctx.writeln("time {}".format(time.time()))
 
 async def devlist(gctx, cctx, lctx):
     """List configured devices"""
@@ -233,5 +240,5 @@ async def loglevel(gctx, cctx, lctx):
     rootlogger.setLevel(level)
 
 handlers = [connect, disconnect, status, quit, shutdown, reboot, help, 
-    devlist, camlist, loglevel, stat,
+    devlist, camlist, loglevel, stat, hello,
     start, stop, abort, pause, resume, dumpconfig, dumpgctx, dumpcctx, dumplctx]
