@@ -416,6 +416,9 @@ class Tui():
 
         self.asyncio_loop = asyncio_loop
         evl = urwid.AsyncioEventLoop(loop=asyncio_loop)
+        ## Urwid and asyncio do not entirely play nice.
+        ## increase idle delay to prevent Urwid redawing 256 times a second.
+        evl._idle_emulation_delay = 1/20
         window = DeviceListWindow(self)
         self.mainloop = urwid.MainLoop(window, palette,
                 unhandled_input=self._unhandled_input, event_loop=evl)
