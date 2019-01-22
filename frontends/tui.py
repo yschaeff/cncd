@@ -327,12 +327,14 @@ class DeviceWindow(Window):
             self.tui.controller.connect(cmd_cb, locator)
         urwid.connect_signal(button, 'click', button_cb, locator)
         self.walker.append(AttrMap(button, None, focus_map='selected'))
+        self.add_hotkey('c', partial(button_cb, button, locator), "connect")
 
         button = Button("[D] Disconnect")
         def button_cb(button, locator):
             self.tui.controller.disconnect(cmd_cb, locator)
         urwid.connect_signal(button, 'click', button_cb, locator)
         self.walker.append(AttrMap(button, None, focus_map='selected'))
+        self.add_hotkey('D', partial(button_cb, button, locator), "disconnect")
 
         button = Button("[s] Start")
         def button_cb(button, locator):
@@ -343,30 +345,35 @@ class DeviceWindow(Window):
             self.tui.controller.start(cmd_cb, locator, self.tui.controller.get_filename(locator))
         urwid.connect_signal(button, 'click', button_cb, locator)
         self.walker.append(AttrMap(button, None, focus_map='selected'))
+        self.add_hotkey('s', partial(button_cb, button, locator), "start")
 
         button = Button("[S] Stop (ask nicely to stop)")
         def button_cb(button, locator):
             self.tui.controller.stop(cmd_cb, locator)
         urwid.connect_signal(button, 'click', button_cb, locator)
         self.walker.append(AttrMap(button, None, focus_map='selected'))
+        self.add_hotkey('S', partial(button_cb, button, locator), "stop")
 
         button = Button("[!] Abort (Interrupt then disconnect)")
         def button_cb(button, locator):
             self.tui.controller.abort(cmd_cb, locator)
         urwid.connect_signal(button, 'click', button_cb, locator)
         self.walker.append(AttrMap(button, None, focus_map='selected'))
+        self.add_hotkey('!', partial(button_cb, button, locator), "abort")
 
         button = Button("[p] Pause")
         def button_cb(button, locator):
             self.tui.controller.pause(cmd_cb, locator)
         urwid.connect_signal(button, 'click', button_cb, locator)
         self.walker.append(AttrMap(button, None, focus_map='selected'))
+        self.add_hotkey('p', partial(button_cb, button, locator), "pause")
 
         button = Button("[r] Resume")
         def button_cb(button, locator):
             self.tui.controller.resume(cmd_cb, locator)
         urwid.connect_signal(button, 'click', button_cb, locator)
         self.walker.append(AttrMap(button, None, focus_map='selected'))
+        self.add_hotkey('r', partial(button_cb, button, locator), "resume")
 
         button = Button("[l] Load File")
         def button_cb(button, locator):
@@ -374,6 +381,7 @@ class DeviceWindow(Window):
             self.tui.push_window(window)
         urwid.connect_signal(button, 'click', button_cb, locator)
         self.walker.append(AttrMap(button, None, focus_map='selected'))
+        self.add_hotkey('l', partial(button_cb, button, locator), "load")
 
 class ActionWindow(Window):
     def __init__(self, tui):
