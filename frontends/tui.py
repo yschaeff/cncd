@@ -50,11 +50,12 @@ class Window(urwid.WidgetWrap):
         if not errors:
             self.footer.set_text("server: OK")
 
-    def add_hotkey(self, key, func, label):
+    def add_hotkey(self, key, func, label, omit_header=False):
         if key not in self.hotkeys:
             self.hotkeys[key] = func
-            self.header_str += " {}:{}".format(key, label)
-            self.header.set_text(self.header_str)
+            if not omit_header:
+                self.header_str += " {}:{}".format(key, label)
+                self.header.set_text(self.header_str)
 
     def keypress(self, size, key):
         if key in self.hotkeys:
@@ -327,14 +328,14 @@ class DeviceWindow(Window):
             self.tui.controller.connect(cmd_cb, locator)
         urwid.connect_signal(button, 'click', button_cb, locator)
         self.walker.append(AttrMap(button, None, focus_map='selected'))
-        self.add_hotkey('c', partial(button_cb, button, locator), "connect")
+        self.add_hotkey('c', partial(button_cb, button, locator), "connect", omit_header=True)
 
         button = Button("[D] Disconnect")
         def button_cb(button, locator):
             self.tui.controller.disconnect(cmd_cb, locator)
         urwid.connect_signal(button, 'click', button_cb, locator)
         self.walker.append(AttrMap(button, None, focus_map='selected'))
-        self.add_hotkey('D', partial(button_cb, button, locator), "disconnect")
+        self.add_hotkey('D', partial(button_cb, button, locator), "disconnect", omit_header=True)
 
         button = Button("[s] Start")
         def button_cb(button, locator):
@@ -345,35 +346,35 @@ class DeviceWindow(Window):
             self.tui.controller.start(cmd_cb, locator, self.tui.controller.get_filename(locator))
         urwid.connect_signal(button, 'click', button_cb, locator)
         self.walker.append(AttrMap(button, None, focus_map='selected'))
-        self.add_hotkey('s', partial(button_cb, button, locator), "start")
+        self.add_hotkey('s', partial(button_cb, button, locator), "start", omit_header=True)
 
         button = Button("[S] Stop (ask nicely to stop)")
         def button_cb(button, locator):
             self.tui.controller.stop(cmd_cb, locator)
         urwid.connect_signal(button, 'click', button_cb, locator)
         self.walker.append(AttrMap(button, None, focus_map='selected'))
-        self.add_hotkey('S', partial(button_cb, button, locator), "stop")
+        self.add_hotkey('S', partial(button_cb, button, locator), "stop", omit_header=True)
 
         button = Button("[!] Abort (Interrupt then disconnect)")
         def button_cb(button, locator):
             self.tui.controller.abort(cmd_cb, locator)
         urwid.connect_signal(button, 'click', button_cb, locator)
         self.walker.append(AttrMap(button, None, focus_map='selected'))
-        self.add_hotkey('!', partial(button_cb, button, locator), "abort")
+        self.add_hotkey('!', partial(button_cb, button, locator), "abort", omit_header=True)
 
         button = Button("[p] Pause")
         def button_cb(button, locator):
             self.tui.controller.pause(cmd_cb, locator)
         urwid.connect_signal(button, 'click', button_cb, locator)
         self.walker.append(AttrMap(button, None, focus_map='selected'))
-        self.add_hotkey('p', partial(button_cb, button, locator), "pause")
+        self.add_hotkey('p', partial(button_cb, button, locator), "pause", omit_header=True)
 
         button = Button("[r] Resume")
         def button_cb(button, locator):
             self.tui.controller.resume(cmd_cb, locator)
         urwid.connect_signal(button, 'click', button_cb, locator)
         self.walker.append(AttrMap(button, None, focus_map='selected'))
-        self.add_hotkey('r', partial(button_cb, button, locator), "resume")
+        self.add_hotkey('r', partial(button_cb, button, locator), "resume", omit_header=True)
 
         button = Button("[l] Load File")
         def button_cb(button, locator):
@@ -381,7 +382,7 @@ class DeviceWindow(Window):
             self.tui.push_window(window)
         urwid.connect_signal(button, 'click', button_cb, locator)
         self.walker.append(AttrMap(button, None, focus_map='selected'))
-        self.add_hotkey('l', partial(button_cb, button, locator), "load")
+        self.add_hotkey('l', partial(button_cb, button, locator), "load", omit_header=True)
 
 class ActionWindow(Window):
     def __init__(self, tui):
