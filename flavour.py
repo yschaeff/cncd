@@ -41,12 +41,26 @@ class SmoothieFirmware(GenericFirmware):
     def set_next_linenumber(self, n:int):
         return "N{} M110".format(n)
 
+class SmoothieLaserFirmware(SmoothieFirmware):
+    ## ONLY TESTED CONNECTED TO TELNET FOR SERIAL SETTINGS MAY DIFFER
+    def __init__(self):
+        super().__init__()
+        self.prompt = "> "
+        self.max_buffer_lenght = 20
+        self.stop_gcodes        = ['T1', 'M104 S0', 'T0']
+        self.abort_gcodes       = ['M112']
+
+    def set_next_linenumber(self, n:int):
+        return "N{} M110".format(n)
+
 
 def get_firmware(name):
     if name == "marlin":
         FW = MarlinFirmware
     elif name == "smoothie":
         FW = SmoothieFirmware
+    elif name == "smoothie-laser":
+        FW = SmoothieLaserFirmware
     elif name == "generic":
         FW = GenericFirmware
     else:

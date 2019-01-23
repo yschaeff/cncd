@@ -234,6 +234,7 @@ class Device():
 
     async def start_task(self, filename):
         def strip_comments(line):
+            line = line.decode()
             idx = line.find(';')
             if idx < 0:
                 return line.strip()
@@ -241,7 +242,7 @@ class Device():
                 return line[:idx].strip()
 
         await self.store('idle', False)
-        with open(await self.gcode_open_hook(filename)) as fd:
+        with open(await self.gcode_open_hook(filename), 'rb') as fd:
             for line in fd:
                 line = strip_comments(await self.gcode_readline_hook(line))
                 if not line: continue
