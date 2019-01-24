@@ -117,20 +117,19 @@ class Plugin(SkeletonPlugin):
     async def handle_command(self, gctx:dict, cctx:dict, lctx) -> None:
         argv = lctx.argv
         if len(argv) < 2:
-            lctx.writeln("ERROR Must specify device")
-            return
+            return "Must specify device"
         ## find device handle
         dev_id = argv[1]
         ## find all configured CNC devices (instances)
         cnc_devices = gctx['dev']
         if dev_id not in cnc_devices:
-            lctx.writeln("ERROR Specified device not found")
-            return
+            return "Specified device not found"
         device = cnc_devices[dev_id]
         handle = device.handle
         progress = self.datastore.get(handle, "progress")
         total = self.datastore.get(handle, "filesize")
-        lctx.writeln("{} / {}".format(progress, total))
+        msg = {"progress":progress, "total":total}
+        lctx.write_json(msg)
 
 
     ## When CNCD restarts or exits the plugins get a change to properly close

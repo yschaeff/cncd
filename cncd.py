@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from collections import namedtuple
 import logging as log
-import asyncio, functools, concurrent
+import asyncio, functools, concurrent, json
 import shlex ##shell lexer
 import serial_asyncio
 import os, socket, traceback
@@ -27,13 +27,15 @@ def done_cb(gctx, cctx, lctx, future):
     try:
         r = future.result()
     except concurrent.futures._base.CancelledError:
-        msg = {'WARNING':'Task preemptively cancelled'}
-        lctx.writeln(json.dumps(msg))
+        r = 'Task preemptively cancelled'
     except Exception as e:
         log.exception('Unexpected error')
         print(traceback.format_exc())
-        ## if this is a json exception dumps doesn't work. not sure why.
-        lctx.writeln("{" + '"ERROR":"Server side exception: {}"'.format(str(e)) + "}")
+        r = "Server side exception: {}".format(str(e))
+
+    if r is not None:
+        msg = {'ERROR':r}
+        lctx.write_json(msg)
     lctx.writeln('.')
 
 def command(line, gctx, cctx={'uid':0}, loopback=False):
@@ -71,8 +73,10 @@ def command(line, gctx, cctx={'uid':0}, loopback=False):
             ## so don't attempt to write!
             return
         transport.write("{} {}".format(nonce, line).encode())
-    Lctx = namedtuple("Lctx", "nonce writeln argv")
-    lctx = Lctx(nonce, writeln, argv)
+    def write_json(msg):
+        return writeln(json.dumps(msg))
+    Lctx = namedtuple("Lctx", "nonce writeln argv write_json")
+    lctx = Lctx(nonce, writeln, argv, write_json)
     task = asyncio.ensure_future(cb(gctx, cctx, lctx))
     task.add_done_callback(functools.partial(done_cb, gctx, cctx, lctx))
     return True

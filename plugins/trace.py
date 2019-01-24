@@ -21,14 +21,13 @@ class Plugin(SkeletonPlugin):
 
     async def update(self, store, devicename, name, value):
         listeners_for_handle = self.handles[devicename]
-        for con, (event, writeln) in listeners_for_handle.items():
-            writeln('"{}":"{}"'.format(name, value))
+        for con, (event, write_json) in listeners_for_handle.items():
+            write_json({name:value})
 
     async def handle_command(self, gctx:dict, cctx:dict, lctx) -> None:
         argv = lctx.argv
         if len(argv) < 2:
-            lctx.writeln("ERROR specify what to subscribe to")
-            return
+            return "specify what to subscribe to"
         handle = argv[1]
         listeners_for_handle = self.handles[handle]
         key = cctx['transport']
@@ -37,7 +36,7 @@ class Plugin(SkeletonPlugin):
                 event, writeln = listeners_for_handle[key]
                 event.set()
             event = asyncio.Event()
-            listeners_for_handle[key] = (event, lctx.writeln)
+            listeners_for_handle[key] = (event, lctx.write_json)
             event.clear()
             await event.wait()
             listeners_for_handle.pop(key)

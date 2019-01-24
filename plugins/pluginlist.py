@@ -4,7 +4,7 @@ import asyncio
 
 class Plugin(SkeletonPlugin):
     PLUGIN_API_VERSION = 1
-    NAME = "Plugin lister"
+    NAME = "Plugin Lister"
     HANDLES = ['plugins']
 
     def __init__(self, datastore, gctx:dict):
@@ -14,7 +14,8 @@ class Plugin(SkeletonPlugin):
 
     async def handle_command(self, gctx:dict, cctx:dict, lctx) -> None:
         plugins = gctx['plugins']
+        msg = {}
         for plugin in plugins:
-            handles = ",".join(['"{}"'.format(cmd) for cmd in plugin.HANDLES])
-            lctx.writeln('"{}":{}'.format(plugin.NAME, handles))
+            msg[plugin.NAME] = plugin.HANDLES
+        lctx.write_json(msg)
 

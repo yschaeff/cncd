@@ -14,8 +14,7 @@ class Plugin(SkeletonPlugin):
     async def handle_command(self, gctx:dict, cctx:dict, lctx) -> None:
         argv = lctx.argv
         if len(argv) < 2 or (argv[1] != 'start' and argv[1] != 'stop'):
-            lctx.writeln("ERROR specify start or stop")
-            return
+            return "specify start or stop"
         """args: start|stop receive server log messages"""
         class ByteStreamHandler(log.StreamHandler):
             def __init__(self, writefunc):
@@ -24,12 +23,12 @@ class Plugin(SkeletonPlugin):
             def emit(self, record):
                 formatted = self.format(record)
                 try:
-                    self.writefunc(formatted)
+                    self.writefunc({'log':formatted})
                 except:
                     ## never ever crash here. Trace might be logged!
                     pass
         if argv[1] == 'start':
-            loghandler = ByteStreamHandler(lctx.writeln)
+            loghandler = ByteStreamHandler(lctx.write_json)
             formatter = log.Formatter('%(levelname)s:%(message)s')
             loghandler.setFormatter(formatter)
             rootlogger = log.getLogger()

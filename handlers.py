@@ -3,7 +3,7 @@ import asyncio
 import logging as log
 import os
 import traceback
-import time, json
+import time
 
 """
 gctx - Global context. No direct writes allowed. Exists during lifetime of program.
@@ -25,17 +25,6 @@ def nargs(n):
         return wrapper
     return decorator
 
-def signal_error(func):
-    """ Signal error to the user. """
-    @functools.wraps(func)
-    async def wrapper(gctx, cctx, lctx):
-        r = await func(gctx, cctx, lctx)
-        if r is not None:
-            msg = {'ERROR':r}
-            lctx.writeln(json.dumps(msg))
-        return r
-    return wrapper
-
 def parse_device(func):
     """ Only execute function if first argument is resolvable to a configured
         device. Make sure to call @nargs first."""
@@ -50,7 +39,6 @@ def parse_device(func):
         return await func(gctx, cctx, lctx, dev)
     return wrapper
 
-@signal_error
 async def last_resort(gctx, cctx, lctx):
     if lctx.argv[0] == '\x04': ## end of transmission
         log.debug("RX EOT. Closing my side of pipe")
@@ -87,12 +75,12 @@ async def stat(gctx, cctx, lctx, dev):
         libpath = libpath[:-1]
     files = await lsdir(libpath)
     msg = {'files':files}
-    lctx.writeln(json.dumps(msg))
+    lctx.write_json(msg)
 
 async def hello(gctx, cctx, lctx):
     """version etc"""
     msg = {"cncd":1, "api":1, "time":time.time()}
-    lctx.writeln(json.dumps(msg))
+    lctx.write_json(msg)
 
 async def devlist(gctx, cctx, lctx):
     """List configured devices"""
@@ -100,7 +88,7 @@ async def devlist(gctx, cctx, lctx):
     msg = {}
     for locator, device in devs.items():
         msg[locator] = device.get_name()
-    lctx.writeln(json.dumps(msg))
+    lctx.write_json(msg)
 
 async def camlist(gctx, cctx, lctx):
     """List configured webcams"""
@@ -108,7 +96,7 @@ async def camlist(gctx, cctx, lctx):
     msg = {}
     for locator, webcam in webcams.items():
         msg[locator] = {'name':webcam.name, 'url':webcam.url}
-    lctx.writeln(json.dumps(msg))
+    lctx.write_json(msg)
 
 async def dumpconfig(gctx, cctx, lctx):
     """List configuration file"""
@@ -118,28 +106,27 @@ async def dumpconfig(gctx, cctx, lctx):
         msg[title] = {}
         for key, value in section.items():
             msg[title][key] = value
-    lctx.writeln(json.dumps(msg))
+    lctx.write_json(msg)
 
 async def dumpgctx(gctx, cctx, lctx):
     """DEBUG List global context"""
     msg = {}
     for k,v in gctx.items():
         msg[str(k)] = str(v)
-    lctx.writeln(json.dumps(msg))
+    lctx.write_json(msg)
 
 async def dumpcctx(gctx, cctx, lctx):
     """DEBUG List connection context"""
     msg = {}
     for k,v in cctx.items():
         msg[str(k)] = str(v)
-    lctx.writeln(json.dumps(msg))
+    lctx.write_json(msg)
 
 async def dumplctx(gctx, cctx, lctx):
     """DEBUG List local context"""
     msg = {'lctx': str(lctx)}
-    lctx.writeln(json.dumps(msg))
+    lctx.write_json(msg)
 
-@signal_error
 @nargs(2)
 @parse_device
 async def connect(gctx, cctx, lctx, dev):
@@ -147,7 +134,6 @@ async def connect(gctx, cctx, lctx, dev):
     if not await dev.connect():
         return "Connect failed"
 
-@signal_error
 @nargs(2)
 @parse_device
 async def disconnect(gctx, cctx, lctx, dev):
@@ -155,7 +141,6 @@ async def disconnect(gctx, cctx, lctx, dev):
     if not await dev.disconnect():
         return "Disconnect failed"
 
-@signal_error
 @nargs(3)
 @parse_device
 async def start(gctx, cctx, lctx, dev):
@@ -164,7 +149,6 @@ async def start(gctx, cctx, lctx, dev):
     if not await dev.start(filename):
         return "Start failed"
 
-@signal_error
 @nargs(2)
 @parse_device
 async def abort(gctx, cctx, lctx, dev):
@@ -172,7 +156,6 @@ async def abort(gctx, cctx, lctx, dev):
     if not await dev.abort():
         return "Abort failed"
 
-@signal_error
 @nargs(2)
 @parse_device
 async def stop(gctx, cctx, lctx, dev):
@@ -180,7 +163,6 @@ async def stop(gctx, cctx, lctx, dev):
     if not await dev.stop():
         return "stop failed"
 
-@signal_error
 @nargs(2)
 @parse_device
 async def pause(gctx, cctx, lctx, dev):
@@ -188,7 +170,6 @@ async def pause(gctx, cctx, lctx, dev):
     if not await dev.pause():
         return "pause failed"
 
-@signal_error
 @nargs(2)
 @parse_device
 async def resume(gctx, cctx, lctx, dev):
@@ -222,15 +203,14 @@ async def help(gctx, cctx, lctx):
     for plugin in plugins:
         for handler in plugin.HANDLES:
             msg["plugin commands"][handler] = "no doc"
-    lctx.writeln(json.dumps(msg))
+    lctx.write_json(msg)
 
-@signal_error
 async def loglevel(gctx, cctx, lctx):
     """Show or set log level"""
     rootlogger = log.getLogger()
     if len(lctx.argv) == 1:
         msg = {"Log level":log.getLevelName(rootlogger.getEffectiveLevel())}
-        lctx.writeln(json.dumps(msg))
+        lctx.write_json(msg)
         return
     ## apply verbosity
     level = getattr(log, lctx.argv[1].upper(), None)

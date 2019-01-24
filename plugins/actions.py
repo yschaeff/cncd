@@ -11,6 +11,8 @@ class Plugin(SkeletonPlugin):
     async def handle_command(self, gctx, cctx, lctx):
         pluginmanager = gctx['pluginmanager']
         actions = pluginmanager.get_actions()
+        msg = []
         for cmd, short, long in actions:
-            lctx.writeln('"{}" "{}" "{}"'.format(cmd, short, long))
+            msg.append({"command":cmd, "short":short, "long":long})
+        lctx.write_json(msg)
 

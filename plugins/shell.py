@@ -3,6 +3,12 @@ import logging as log
 from pluginmanager import Action
 from plugins.pluginskel import SkeletonPlugin
 
+## Friendly reminder ##
+## This plugin is safe if-and-only-if the enduser is connected via an
+## SSH tunnel, thereby proving it has the needed credentials.
+## This plugin MUST NOT be used when a client is potentially unprivileged,
+## such as with a http client. Or using a TCP socket instead of Unix socket.
+
 class Plugin(SkeletonPlugin):
     """Inherit from this class for all Plugins"""
     NAME = "shell"
@@ -23,7 +29,6 @@ class Plugin(SkeletonPlugin):
 
     async def handle_command(self, gctx, cctx, lctx):
         if len(lctx.argv) != 2:
-            lctx.writeln("ERROR specify 1 command exactly")
-            return
+            return "specify 1 command exactly"
         out = subprocess.Popen(shlex.split("{}".format(lctx.argv[1])))
 
