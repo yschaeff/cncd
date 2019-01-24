@@ -2,8 +2,18 @@
 
 {% block body %}
 
+    <h1> {{ device }} </h1>
+
     {% for handle, name in devices.items() %}
         <a href="{{ url('device', device=handle) }}">Device: {{ name }}</a>
     {% endfor %}
 
+    <ul>
+    {% for key, value in info.items() %}
+    <li> {{ key }}: {{ value }} </li>
+    {% endfor %}
+    </ul>
+    
+
 {% endblock body %}
+

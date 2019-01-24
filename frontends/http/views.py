@@ -1,33 +1,41 @@
 from aiohttp import web
+from functools import partial
 import asyncio
 import aiohttp_jinja2
 
 async def cncd_request(func):
     event = asyncio.Event()
-    data = []
-    def receive(lines):
-        data.extend(lines)
+    data = {}
+    def receive(response):
+        data.update(response)
         event.set()
     func(receive)
     await event.wait()
+    #print(func)
+    #print(data)
+    return data
+
+async def get_device_list(request):
+    controller = request.app['controller']
+    data = await cncd_request(controller.get_devlist)
+    return data
+
+async def get_device_info(request, device):
+    controller = request.app['controller']
+    data = await cncd_request(partial(controller.get_data, device=device))
     return data
 
 
 @aiohttp_jinja2.template('index.html')
 async def index(request):
-    controller = request.app['controller']
-    data = await cncd_request(controller.get_devlist)
+    devlist = await get_device_list(request)
+    return {'devices': devlist}
 
-    print(dir(request))
-    print(data)
-    
-    return {'devices': data}
-
-@aiohttp_jinja2.template('index.html')
+@aiohttp_jinja2.template('device.html')
 async def device_view(request):
-    controller = request.app['controller']
-    data = await cncd_request(controller.get_devlist)
+    device = request.match_info['device']
 
-    print(data)
+    info = await get_device_info(request, device)
+    devlist = await get_device_list(request)
     
-    return {'devices': data}
+    return {'info': info, 'devices':devlist, 'device':devlist[device]}
