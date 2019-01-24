@@ -5,7 +5,7 @@ import tui
 from functools import partial
 from collections import defaultdict
 import logging as log
-import shlex
+import shlex, json
 import argparse, time, subprocess
 from configparser import ConfigParser
 from os.path import expanduser
@@ -75,11 +75,8 @@ class Controller():
 
     def get_devlist(self, gui_cb):
         def controller_cb(lines):
-            devices = {}
             for line in lines:
-                locator, name = shlex.split(line)
-                devices[locator] = name
-            gui_cb(devices)
+                gui_cb(json.loads(line))
         self.protocol.send_message("devlist", controller_cb)
 
     def action(self, cmd, gui_cb):
@@ -104,16 +101,15 @@ class Controller():
 
     def get_actions(self, gui_cb):
         def controller_cb(lines):
-            gui_cb(lines)
+            for line in lines:
+                gui_cb(json.loads(line))
         self.protocol.send_message("actions", controller_cb)
 
     def get_camlist(self, gui_cb):
         def controller_cb(lines):
             webcams = []
             for line in lines:
-                locator, name, url = shlex.split(line)
-                webcams.append( (locator, name, url) )
-            gui_cb(webcams)
+                gui_cb(json.loads(line))
         self.protocol.send_message("camlist", controller_cb)
 
     def lines2dict(self, lines):
@@ -193,7 +189,8 @@ class Controller():
     def start_logs(self, gui_cb):
         def controller_cb(lines):
             if gui_cb:
-                gui_cb(lines)
+                for line in lines:
+                    gui_cb(json.loads(line))
         self.protocol.send_message("tracelog start", controller_cb, flush=True)
 
     def stop_logs(self):

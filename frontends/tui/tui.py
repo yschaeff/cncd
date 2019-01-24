@@ -39,14 +39,14 @@ class Window(urwid.WidgetWrap):
         """Fetch new information and update labels, overwrite me"""
         pass
 
-    def error_filter(self, lines):
+    def error_filter(self, msg):
         errors = False
-        for line in lines:
-            if line.startswith("ERROR"):
-                self.footer.set_text("server: {}".format(line.strip()))
+        for key in msg:
+            if key == "ERROR":
+                self.footer.set_text("server: {}".format(key.strip()))
                 errors = True
             else:
-                yield line
+                yield key
         if not errors:
             self.footer.set_text("server: OK")
 
@@ -105,8 +105,8 @@ class LogWindow(Window):
 
     def start(self):
         self.walker.append(Text("---- START LOGGING ----", align='center'))
-        def log_cb(lines):
-            for line in lines:
+        def log_cb(msg):
+            for l, line in msg.items():
                 w = self.wrap(line)
                 self.walker.append(w)
         self.tui.controller.start_logs(log_cb)
@@ -398,7 +398,7 @@ class ActionWindow(Window):
                 self.tui.controller.action(cmd, None)
                 self.tui.pop_window()
             for line in self.error_filter(actions):
-                cmd, label, description = shlex.split(line)
+                cmd, label, description = line.values()
                 button = Button("[{}] - {}".format(label, description))
                 urwid.connect_signal(button, 'click', button_cb, user_args=[cmd])
                 self.walker.append(AttrMap(button, None, focus_map='selected'))
@@ -423,7 +423,9 @@ class WebcamWindow(Window):
             def button_cb(locator, url, button):
                 webbrowser.open_new(url)
                 self.tui.pop_window()
-            for locator, name, url in webcams:
+            for locator, webcam in webcams.items():
+                name = webcam["name"]
+                url = webcam["url"]
                 button = Button(name)
                 urwid.connect_signal(button, 'click', button_cb, user_args=[locator, url])
                 self.walker.append(AttrMap(button, None, focus_map='selected'))
