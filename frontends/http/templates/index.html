@@ -1,0 +1,12 @@
+{% extends "layout.html" %}
+
+{% block body %}
+
+    <h1>Welcome to {{ app['name'] }}</h1>
+    <h1>Welcome to <a href="{{ static('yyy') }}">xxx</a></h1>
+
+    {% for handle, name in devices %}
+        <a href="{{ url('device', device=handle) }}">Device: {{ name }}</a>
+    {% endfor %}
+
+{% endblock body %}
