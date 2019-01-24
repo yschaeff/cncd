@@ -75,10 +75,10 @@ class Controller():
 
     def get_devlist(self, gui_cb):
         def controller_cb(lines):
-            devices = []
+            devices = {}
             for line in lines:
                 locator, name = shlex.split(line)
-                devices.append( (locator, name) )
+                devices[locator] = name
             gui_cb(devices)
         self.protocol.send_message("devlist", controller_cb)
 
@@ -118,7 +118,16 @@ class Controller():
 
     def get_data(self, gui_cb, device):
         def controller_cb(lines):
-            gui_cb(lines)
+            data = {}
+            for line in lines:
+                chunks = shlex.split(line.strip())
+                for item in chunks:
+                    i = item.find(':')
+                    if i == -1: continue
+                    key = item[:i]
+                    value = item[i+1:]
+                    data[key] = value
+            gui_cb(data)
         self.protocol.send_message("data \"{}\"".format(device), controller_cb)
 
     def subscribe(self, gui_cb, device):

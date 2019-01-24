@@ -225,15 +225,9 @@ class DeviceWindow(Window):
     def stop(self):
         self.tui.controller.unsubscribe(None, self.locator)
 
-    def update_status_cb(self, container, lines):
-        for line in self.error_filter(lines):
-            chunks = shlex.split(line.strip())
-            for item in chunks:
-                i = item.find(':')
-                if i == -1: continue
-                key = item[:i]
-                value = item[i+1:]
-                self.status[key] = value
+    def update_status_cb(self, container, data):
+        for key, value in data.items():
+            self.status[key] = value
 
         def parse_time(status, container, ignore):
             try:
@@ -464,7 +458,7 @@ class DeviceListWindow(Window):
             def button_cb(locator, device, button):
                 window = DeviceWindow(self.tui, locator, device)
                 self.tui.push_window(window)
-            for locator, device in devices:
+            for locator, device in devices.items():
                 button = Button(device)
                 urwid.connect_signal(button, 'click', button_cb, user_args=[locator, device])
                 self.walker.append(AttrMap(button, None, focus_map='selected'))
