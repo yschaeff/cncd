@@ -6,9 +6,8 @@
 
 <img src="{{ static('cncd.svg') }}" alt=logo />
 
-<p>
-    CNC devices available:
-</p>
+<h2>Devices</h2>
+
 <ul>
     {% for handle, name in devices.items() %}
     <li>
@@ -16,5 +15,11 @@
     </li>
     {% endfor %}
 </ul>
+
+
+<h2>Webcams</h2>
+
+
+<h2>Actions</h2>
 
 {% endblock body %}

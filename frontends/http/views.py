@@ -20,6 +20,11 @@ async def get_device_list(request):
     data = await cncd_request(controller.get_devlist)
     return data
 
+#async def get_camera_list(request):
+    #controller = request.app['controller']
+    #camlist = await cncd_request(controller.get_camlist)
+    #return {"xxx":"yyy"}
+
 async def get_device_info(request, device):
     controller = request.app['controller']
     data = await cncd_request(partial(controller.get_data, device=device))
@@ -29,6 +34,8 @@ async def get_device_info(request, device):
 @aiohttp_jinja2.template('index.html')
 async def index(request):
     devlist = await get_device_list(request)
+    #cameras = await get_camera_list(request)
+    #return {'devices': devlist, 'cameras':cameras}
     return {'devices': devlist}
 
 @aiohttp_jinja2.template('device.html')

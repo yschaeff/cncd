@@ -27,11 +27,13 @@ def done_cb(gctx, cctx, lctx, future):
     try:
         r = future.result()
     except concurrent.futures._base.CancelledError:
-        lctx.writeln('Task preemptively cancelled')
+        msg = {'WARNING':'Task preemptively cancelled'}
+        lctx.writeln(json.dumps(msg))
     except Exception as e:
         log.exception('Unexpected error')
         print(traceback.format_exc())
-        lctx.writeln("ERROR Server side exception: {}".format(str(e)))
+        ## if this is a json exception dumps doesn't work. not sure why.
+        lctx.writeln("{" + '"ERROR":"Server side exception: {}"'.format(str(e)) + "}")
     lctx.writeln('.')
 
 def command(line, gctx, cctx={'uid':0}, loopback=False):

@@ -3,7 +3,7 @@ import asyncio
 import logging as log
 import os
 import traceback
-import time
+import time, json
 
 """
 gctx - Global context. No direct writes allowed. Exists during lifetime of program.
@@ -30,10 +30,9 @@ def signal_error(func):
     @functools.wraps(func)
     async def wrapper(gctx, cctx, lctx):
         r = await func(gctx, cctx, lctx)
-        if r is None:
-            lctx.writeln("OK")
-        else:
-            lctx.writeln("ERROR {}".format(r))
+        if r is not None:
+            msg = {'ERROR':r}
+            lctx.writeln(json.dumps(msg))
         return r
     return wrapper
 
@@ -51,15 +50,14 @@ def parse_device(func):
         return await func(gctx, cctx, lctx, dev)
     return wrapper
 
-
+@signal_error
 async def last_resort(gctx, cctx, lctx):
     if lctx.argv[0] == '\x04': ## end of transmission
         log.debug("RX EOT. Closing my side of pipe")
-        lctx.writeln("closing for you")
         cctx['transport'].close()
         return
-    lctx.writeln("ERROR UNHANDLED INPUT. HINT: type help")
     log.warning("UNHANDLED INPUT '{}'".format(lctx.argv))
+    return "UNHANDLED INPUT. HINT: type help"
 
 async def lsdir(dirname):
     try:
@@ -88,49 +86,58 @@ async def stat(gctx, cctx, lctx, dev):
     if libpath.endswith('/'):
         libpath = libpath[:-1]
     files = await lsdir(libpath)
-    for f in files:
-        lctx.writeln(f)
+    msg = {'files':files}
+    lctx.writeln(json.dumps(msg))
 
 async def hello(gctx, cctx, lctx):
     """version etc"""
-    lctx.writeln("version 1")
-    lctx.writeln("api 1")
-    lctx.writeln("time {}".format(time.time()))
+    msg = {"cncd":1, "api":1, "time":time.time()}
+    lctx.writeln(json.dumps(msg))
 
 async def devlist(gctx, cctx, lctx):
     """List configured devices"""
     devs = gctx['dev']
-    for locator, device in sorted(devs.items()):
-        lctx.writeln("\"{}\" \"{}\"".format(locator, device.get_name()))
+    msg = {}
+    for locator, device in devs.items():
+        msg[locator] = device.get_name()
+    lctx.writeln(json.dumps(msg))
 
 async def camlist(gctx, cctx, lctx):
     """List configured webcams"""
     webcams = gctx['webcams']
-    for locator, webcam in sorted(webcams.items()):
-        lctx.writeln("\"{}\" \"{}\" \"{}\"".format(locator, webcam.name, webcam.url))
+    msg = {}
+    for locator, webcam in webcams.items():
+        msg[locator] = {'name':webcam.name, 'url':webcam.url}
+    lctx.writeln(json.dumps(msg))
 
 async def dumpconfig(gctx, cctx, lctx):
     """List configuration file"""
     cfg = gctx['cfg']
+    msg = {}
     for title, section in cfg.items():
-        lctx.writeln("[{}]".format(title))
+        msg[title] = {}
         for key, value in section.items():
-            lctx.writeln("{} = {}".format(key, value))
-        lctx.writeln("")
+            msg[title][key] = value
+    lctx.writeln(json.dumps(msg))
 
 async def dumpgctx(gctx, cctx, lctx):
     """DEBUG List global context"""
+    msg = {}
     for k,v in gctx.items():
-        lctx.writeln("{}: {}".format(k, v))
+        msg[str(k)] = str(v)
+    lctx.writeln(json.dumps(msg))
 
 async def dumpcctx(gctx, cctx, lctx):
     """DEBUG List connection context"""
+    msg = {}
     for k,v in cctx.items():
-        lctx.writeln("{}: {}".format(k, v))
+        msg[str(k)] = str(v)
+    lctx.writeln(json.dumps(msg))
 
 async def dumplctx(gctx, cctx, lctx):
     """DEBUG List local context"""
-    lctx.writeln("{}".format(lctx))
+    msg = {'lctx': str(lctx)}
+    lctx.writeln(json.dumps(msg))
 
 @signal_error
 @nargs(2)
@@ -147,14 +154,6 @@ async def disconnect(gctx, cctx, lctx, dev):
     """Control configured devices"""
     if not await dev.disconnect():
         return "Disconnect failed"
-
-@signal_error
-@nargs(2)
-@parse_device
-async def status(gctx, cctx, lctx, dev):
-    """Control configured devices"""
-    status = dev.status()
-    lctx.writeln(status)
 
 @signal_error
 @nargs(3)
@@ -199,7 +198,6 @@ async def resume(gctx, cctx, lctx, dev):
 
 async def quit(gctx, cctx, lctx):
     """Disconnect this client."""
-    lctx.writeln("closing for you")
     log.debug("Closing my side of pipe")
     cctx['transport'].close()
 
@@ -217,28 +215,29 @@ async def reboot(gctx, cctx, lctx):
 async def help(gctx, cctx, lctx):
     """Show this help."""
     global handlers
-    lctx.writeln("COMMANDS:")
+    msg = {"builtin commands":{}, "plugin commands":{}}
     for f in handlers:
-        lctx.writeln(" {:<10}: {}".format(f.__name__, f.__doc__))
-    lctx.writeln("PLUGIN COMMANDS:")
+        msg["builtin commands"][f.__name__] = f.__doc__
     plugins = gctx["plugins"]
     for plugin in plugins:
         for handler in plugin.HANDLES:
-            lctx.writeln(" {:<10}: {}".format(handler, "no doc"))
+            msg["plugin commands"][handler] = "no doc"
+    lctx.writeln(json.dumps(msg))
 
+@signal_error
 async def loglevel(gctx, cctx, lctx):
     """Show or set log level"""
     rootlogger = log.getLogger()
     if len(lctx.argv) == 1:
-        lctx.writeln("Log level: {}".format(log.getLevelName(rootlogger.getEffectiveLevel())))
+        msg = {"Log level":log.getLevelName(rootlogger.getEffectiveLevel())}
+        lctx.writeln(json.dumps(msg))
         return
     ## apply verbosity
     level = getattr(log, lctx.argv[1].upper(), None)
     if not isinstance(level, int):
-        lctx.writeln("Log level needs to be one of: [DEBUG, INFO, WARNING, ERROR, CRITICAL]")
-        return
+        return "Log level needs to be one of: [DEBUG, INFO, WARNING, ERROR, CRITICAL]"
     rootlogger.setLevel(level)
 
-handlers = [connect, disconnect, status, quit, shutdown, reboot, help, 
+handlers = [connect, disconnect, quit, shutdown, reboot, help, 
     devlist, camlist, loglevel, stat, hello,
     start, stop, abort, pause, resume, dumpconfig, dumpgctx, dumpcctx, dumplctx]
