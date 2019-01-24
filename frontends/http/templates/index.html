@@ -2,8 +2,19 @@
 
 {% block body %}
 
+<h1>CNCD Web Frontend</h1>
+
+<img src="{{ static('cncd.svg') }}" alt=logo />
+
+<p>
+    CNC devices available:
+</p>
+<ul>
     {% for handle, name in devices.items() %}
-        <a href="{{ url('device', device=handle) }}">Device: {{ name }}</a>
+    <li>
+        <a href="{{ url('device', device=handle) }}">{{ name }}</a>
+    </li>
     {% endfor %}
+</ul>
 
 {% endblock body %}

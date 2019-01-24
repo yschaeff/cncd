@@ -116,23 +116,28 @@ class Controller():
             gui_cb(webcams)
         self.protocol.send_message("camlist", controller_cb)
 
+    def lines2dict(self, lines):
+        data = {}
+        for line in lines:
+            chunks = shlex.split(line.strip())
+            for item in chunks:
+                i = item.find(':')
+                if i == -1: continue
+                key = item[:i]
+                value = item[i+1:]
+                data[key] = value
+        return data
+
     def get_data(self, gui_cb, device):
         def controller_cb(lines):
-            data = {}
-            for line in lines:
-                chunks = shlex.split(line.strip())
-                for item in chunks:
-                    i = item.find(':')
-                    if i == -1: continue
-                    key = item[:i]
-                    value = item[i+1:]
-                    data[key] = value
+            data = self.lines2dict(lines)
             gui_cb(data)
         self.protocol.send_message("data \"{}\"".format(device), controller_cb)
 
     def subscribe(self, gui_cb, device):
         def controller_cb(lines):
-            gui_cb(lines)
+            data = self.lines2dict(lines)
+            gui_cb(data)
         self.protocol.send_message("subscribe \"{}\"".format(device), controller_cb, flush=True)
 
     def unsubscribe(self, gui_cb, device):
