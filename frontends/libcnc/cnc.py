@@ -51,7 +51,7 @@ class CncProtocol(asyncio.Protocol):
                         self.gui_exception = e
                         self.transport.close()
                 self.waiters.pop(nonce)
-            elif flush:
+            elif flush and handler:
                 handler([line])
             else:
                 buf.append(line)
@@ -161,7 +161,7 @@ class Controller():
 
     def stop_logs(self):
         cmd = "tracelog stop"
-        self.protocol.send_message(cmd, partial(self.cb, gui_cb))
+        self.protocol.send_message(cmd, None)
 
 def connect(loop, path):
     future = loop.create_unix_connection(CncProtocol, path)
