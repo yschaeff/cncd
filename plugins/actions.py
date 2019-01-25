@@ -14,5 +14,5 @@ class Plugin(SkeletonPlugin):
         msg = []
         for cmd, short, long in actions:
             msg.append({"command":cmd, "short":short, "long":long})
-        lctx.write_json(msg)
+        lctx.write_json({'actions':msg})
 

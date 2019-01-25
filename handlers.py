@@ -88,7 +88,7 @@ async def devlist(gctx, cctx, lctx):
     msg = {}
     for locator, device in devs.items():
         msg[locator] = device.get_name()
-    lctx.write_json(msg)
+    lctx.write_json({'devices': msg})
 
 async def camlist(gctx, cctx, lctx):
     """List configured webcams"""
@@ -96,7 +96,7 @@ async def camlist(gctx, cctx, lctx):
     msg = {}
     for locator, webcam in webcams.items():
         msg[locator] = {'name':webcam.name, 'url':webcam.url}
-    lctx.write_json(msg)
+    lctx.write_json({'webcams':msg})
 
 async def dumpconfig(gctx, cctx, lctx):
     """List configuration file"""

@@ -74,11 +74,15 @@ class Controller():
         return self.filenames[device]
 
     def cb(self, gui_cb, msgs):
-        if  msgs:
+        if not gui_cb: return
+        if msgs:
             for msg in msgs:
-                gui_cb(json.loads(msg))
-        else:
-            ## An empty response is still a response!
+                try:
+                    json_msg = json.loads(msg)
+                except json.decoder.JSONDecodeError as e:
+                    json_msg = {'ERROR': str(e) }
+                gui_cb(json_msg)
+        else: ## An empty response is still a response!
             gui_cb({})
 
     def get_devlist(self, gui_cb):

@@ -22,7 +22,7 @@ class Plugin(SkeletonPlugin):
     async def update(self, store, devicename, name, value):
         listeners_for_handle = self.handles[devicename]
         for con, (event, write_json) in listeners_for_handle.items():
-            write_json({name:value})
+            write_json({devicename:{name:value}})
 
     async def handle_command(self, gctx:dict, cctx:dict, lctx) -> None:
         argv = lctx.argv

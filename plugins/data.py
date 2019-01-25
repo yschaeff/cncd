@@ -11,5 +11,5 @@ class Plugin(SkeletonPlugin):
         if len(argv) <= 1:
             return "need more args"
         handle = argv[1]
-        lctx.write_json(self.datastore.data[handle])
+        lctx.write_json({handle: self.datastore.data[handle]})
 

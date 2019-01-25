@@ -39,16 +39,12 @@ class Window(urwid.WidgetWrap):
         """Fetch new information and update labels, overwrite me"""
         pass
 
-    def error_filter(self, msg):
-        errors = False
-        for key in msg:
-            if key == "ERROR":
-                self.footer.set_text("server: {}".format(key.strip()))
-                errors = True
-            else:
-                yield key
-        if not errors:
-            self.footer.set_text("server: OK")
+    def display_errors(self, json_msg):
+        error = json_msg.get('ERROR', None)
+        if error:
+            self.footer.set_text("ERROR: {}".format(error.strip()))
+        else:
+            self.footer.set_text("")
 
     def add_hotkey(self, key, func, label, omit_header=False):
         if key not in self.hotkeys:
@@ -180,10 +176,11 @@ class FileListWindow(Window):
             self.walker.append(AttrMap(button, None, focus_map='selected'))
 
     def update(self):
-        def devlist_cb(json_msg):
+        def filelist_cb(json_msg):
+            self.display_errors(json_msg)
             self.all_files = json_msg.get('files', [])
             self.populate_list()
-        self.tui.controller.get_filelist(devlist_cb, self.locator)
+        self.tui.controller.get_filelist(filelist_cb, self.locator)
 
 class DeviceWindow(Window):
     def __init__(self, tui, locator, device):
@@ -227,7 +224,11 @@ class DeviceWindow(Window):
         self.tui.controller.unsubscribe(None, self.locator)
 
     def update_status_cb(self, container, json_msg):
-        for key, value in json_msg.items():
+        self.display_errors(json_msg)
+        ## TODO filter error from loop below. The results should be in a known
+        ## section like 'i3'
+        data = json_msg.get(self.locator, {})
+        for key, value in data.items():
             self.status[key] = value
 
         def parse_time(status, container, ignore):
@@ -312,11 +313,7 @@ class DeviceWindow(Window):
         self.walker.clear()
         locator = self.locator
         def cmd_cb(json_msg):
-            error = json_msg.get('ERROR', None)
-            if error:
-                self.footer.set_text("server: {}".format(error.strip()))
-            else:
-                self.footer.set_text("")
+            self.display_errors(json_msg)
             self.update_status()
 
         fn = self.tui.controller.get_filename(locator)
@@ -397,12 +394,15 @@ class ActionWindow(Window):
         self.update()
 
     def update(self):
-        def action_cb(actions):
+        def action_cb(json_msg):
             self.walker.clear()
             def button_cb(cmd, button):
                 self.tui.controller.action(cmd, None)
                 self.tui.pop_window()
-            for line in self.error_filter(actions):
+            self.display_errors(json_msg)
+            actions = json_msg.get('actions', None)
+            if not actions: return
+            for line in actions:
                 cmd, label, description = line.values()
                 button = Button("[{}] - {}".format(label, description))
                 urwid.connect_signal(button, 'click', button_cb, user_args=[cmd])
@@ -423,11 +423,14 @@ class WebcamWindow(Window):
         self.update()
 
     def update(self):
-        def camlist_cb(webcams):
+        def camlist_cb(json_msg):
             self.walker.clear()
             def button_cb(locator, url, button):
                 webbrowser.open_new(url)
                 self.tui.pop_window()
+            self.display_errors(json_msg)
+            webcams = json_msg.get('webcams', None)
+            if not webcams: return
             for locator, webcam in webcams.items():
                 name = webcam["name"]
                 url = webcam["url"]
@@ -460,11 +463,14 @@ class DeviceListWindow(Window):
         self.tui.push_window(window)
 
     def update(self):
-        def devlist_cb(devices):
+        def devlist_cb(json_msg):
             self.walker.clear()
             def button_cb(locator, device, button):
                 window = DeviceWindow(self.tui, locator, device)
                 self.tui.push_window(window)
+            self.display_errors(json_msg)
+            devices = json_msg.get('devices')
+            if not devices: return
             for locator, device in devices.items():
                 button = Button(device)
                 urwid.connect_signal(button, 'click', button_cb, user_args=[locator, device])

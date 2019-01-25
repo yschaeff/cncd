@@ -74,6 +74,8 @@ def command(line, gctx, cctx={'uid':0}, loopback=False):
             return
         transport.write("{} {}".format(nonce, line).encode())
     def write_json(msg):
+        ## ONLY ENABLE THIS AS LAST RESORT. WILL CAUSE LOOPS! ##
+        ##            log.debug(json.dumps(msg))              ##
         return writeln(json.dumps(msg))
     Lctx = namedtuple("Lctx", "nonce writeln argv write_json")
     lctx = Lctx(nonce, writeln, argv, write_json)
