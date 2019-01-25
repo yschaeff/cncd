@@ -19,7 +19,20 @@
 
 <h2>Webcams</h2>
 
+<ul>
+    {% for handle, camera in webcams.items() %}
+    <li>
+        <a href="{{ camera.url }}">{{ camera.name }}</a>
+    </li>
+    {% endfor %}
+</ul>
+
 
 <h2>Actions</h2>
+
+{% for action in actions %}
+    <p> {{ action.command }} - {{ action.long }} - {{ action.short }} </p>
+{% endfor %}
+
 
 {% endblock body %}
