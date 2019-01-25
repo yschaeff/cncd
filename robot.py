@@ -144,6 +144,7 @@ class Device():
         self.tx_task.add_done_callback(self.task_done)
         self.rx_task = asyncio.ensure_future(self.receiver(rx_queue, self.ack_queue, is_alive))
         self.rx_task.add_done_callback(self.task_done)
+        return True
 
     def task_done(self, future):
         """Generic callback for tasks"""
