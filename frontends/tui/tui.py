@@ -105,10 +105,11 @@ class LogWindow(Window):
 
     def start(self):
         self.walker.append(Text("---- START LOGGING ----", align='center'))
-        def log_cb(msg):
-            for l, line in msg.items():
-                w = self.wrap(line)
-                self.walker.append(w)
+        def log_cb(json_msg):
+            line = json_msg.get('log', None)
+            if not line:
+                return
+            self.walker.append(self.wrap(line))
         self.tui.controller.start_logs(log_cb)
 
     def stop(self):
@@ -179,8 +180,8 @@ class FileListWindow(Window):
             self.walker.append(AttrMap(button, None, focus_map='selected'))
 
     def update(self):
-        def devlist_cb(lines):
-            self.all_files = [line for line in self.error_filter(lines)]
+        def devlist_cb(json_msg):
+            self.all_files = json_msg.get('files', [])
             self.populate_list()
         self.tui.controller.get_filelist(devlist_cb, self.locator)
 
@@ -225,8 +226,8 @@ class DeviceWindow(Window):
     def stop(self):
         self.tui.controller.unsubscribe(None, self.locator)
 
-    def update_status_cb(self, container, data):
-        for key, value in data.items():
+    def update_status_cb(self, container, json_msg):
+        for key, value in json_msg.items():
             self.status[key] = value
 
         def parse_time(status, container, ignore):
@@ -281,7 +282,7 @@ class DeviceWindow(Window):
             ignore.append('paused')
 
         def make_w(container, key, Tlabel, Flabel, reverse=False):
-            if (self.status[key] == 'True') ^ reverse:
+            if (self.status[key] == True) ^ reverse:
                 label = "[{}]".format(Tlabel)
                 attr = 'Tlabel'
             else:
@@ -310,8 +311,12 @@ class DeviceWindow(Window):
         self.update_status()
         self.walker.clear()
         locator = self.locator
-        def cmd_cb(lines):
-            for line in self.error_filter(lines): pass
+        def cmd_cb(json_msg):
+            error = json_msg.get('ERROR', None)
+            if error:
+                self.footer.set_text("server: {}".format(error.strip()))
+            else:
+                self.footer.set_text("")
             self.update_status()
 
         fn = self.tui.controller.get_filename(locator)

@@ -73,128 +73,91 @@ class Controller():
     def get_filename(self, device):
         return self.filenames[device]
 
+    def cb(self, gui_cb, msgs):
+        if  msgs:
+            for msg in msgs:
+                gui_cb(json.loads(msg))
+        else:
+            ## An empty response is still a response!
+            gui_cb({})
+
     def get_devlist(self, gui_cb):
-        def controller_cb(lines):
-            for line in lines:
-                gui_cb(json.loads(line))
-        self.protocol.send_message("devlist", controller_cb)
+        cmd = "devlist"
+        self.protocol.send_message(cmd, partial(self.cb, gui_cb))
 
     def action(self, cmd, gui_cb):
         self.protocol.send_message(cmd, None)
 
     def hello(self):
+        def controller_cb(jmsg):
+            self.cncd_version = int(jmsg.get('version', 0))
+            self.api_version = int(jmsg.get('api', 0))
+            self.time_offset = time.time() - float(jmsg.get('time', time.time()))
         self.time_offset = 0
         self.cncd_version = 0
         self.api_version = 0
-        def controller_cb(lines):
-            for line in lines:
-                r = line.split()
-                if len(r) != 2: continue
-                key, value = r
-                if key == 'version':
-                    self.cncd_version = int(value)
-                elif key == 'api':
-                    self.api_version = int(value)
-                elif key == 'time':
-                    self.time_offset = time.time() - float(value)
-        self.protocol.send_message("hello", controller_cb)
+        cmd = "hello"
+        self.protocol.send_message(cmd, partial(self.cb, controller_cb))
 
     def get_actions(self, gui_cb):
-        def controller_cb(lines):
-            for line in lines:
-                gui_cb(json.loads(line))
-        self.protocol.send_message("actions", controller_cb)
+        cmd = "actions"
+        self.protocol.send_message(cmd, partial(self.cb, gui_cb))
 
     def get_camlist(self, gui_cb):
-        def controller_cb(lines):
-            webcams = []
-            for line in lines:
-                gui_cb(json.loads(line))
-        self.protocol.send_message("camlist", controller_cb)
-
-    def lines2dict(self, lines):
-        data = {}
-        for line in lines:
-            chunks = shlex.split(line.strip())
-            for item in chunks:
-                i = item.find(':')
-                if i == -1: continue
-                key = item[:i]
-                value = item[i+1:]
-                data[key] = value
-        return data
+        cmd = "camlist"
+        self.protocol.send_message(cmd, partial(self.cb, gui_cb))
 
     def get_data(self, gui_cb, device):
-        def controller_cb(lines):
-            data = self.lines2dict(lines)
-            gui_cb(data)
-        self.protocol.send_message("data \"{}\"".format(device), controller_cb)
+        cmd = "data \"{}\"".format(device)
+        self.protocol.send_message(cmd, partial(self.cb, gui_cb))
 
     def subscribe(self, gui_cb, device):
-        def controller_cb(lines):
-            data = self.lines2dict(lines)
-            gui_cb(data)
-        self.protocol.send_message("subscribe \"{}\"".format(device), controller_cb, flush=True)
+        cmd = "subscribe \"{}\"".format(device)
+        self.protocol.send_message(cmd, partial(self.cb, gui_cb), flush=True)
 
     def unsubscribe(self, gui_cb, device):
-        self.protocol.send_message("unsubscribe \"{}\"".format(device))
+        cmd = "unsubscribe \"{}\"".format(device)
+        self.protocol.send_message(cmd, partial(self.cb, gui_cb))
 
     def get_filelist(self, gui_cb, device):
-        def controller_cb(lines):
-            gui_cb(lines)
-        self.protocol.send_message("stat \"{}\"".format(device), controller_cb)
+        cmd = "stat \"{}\"".format(device)
+        self.protocol.send_message(cmd, partial(self.cb, gui_cb))
 
     def connect(self, gui_cb, device):
-        def controller_cb(lines):
-            if gui_cb:
-                gui_cb(lines)
-        self.protocol.send_message("connect \"{}\"".format(device), controller_cb)
+        cmd = "connect \"{}\"".format(device)
+        self.protocol.send_message(cmd, partial(self.cb, gui_cb))
 
     def disconnect(self, gui_cb, device):
-        def controller_cb(lines):
-            if gui_cb:
-                gui_cb(lines)
-        self.protocol.send_message("disconnect \"{}\"".format(device), controller_cb)
+        cmd = "disconnect \"{}\"".format(device)
+        self.protocol.send_message(cmd, partial(self.cb, gui_cb))
 
     def start(self, gui_cb, device, filename):
-        def controller_cb(lines):
-            if gui_cb:
-                gui_cb(lines)
-        self.protocol.send_message("start \"{}\" \"{}\"".format(device, filename), controller_cb)
+        cmd ="start \"{}\" \"{}\"".format(device, filename)
+        self.protocol.send_message(cmd, partial(self.cb, gui_cb))
 
     def abort(self, gui_cb, device):
-        def controller_cb(lines):
-            if gui_cb:
-                gui_cb(lines)
-        self.protocol.send_message("abort \"{}\"".format(device), controller_cb)
+        cmd = "abort \"{}\"".format(device)
+        self.protocol.send_message(cmd, partial(self.cb, gui_cb))
 
     def stop(self, gui_cb, device):
-        def controller_cb(lines):
-            if gui_cb:
-                gui_cb(lines)
-        self.protocol.send_message("stop \"{}\"".format(device), controller_cb)
+        cmd = "stop \"{}\"".format(device)
+        self.protocol.send_message(cmd, partial(self.cb, gui_cb))
 
     def pause(self, gui_cb, device):
-        def controller_cb(lines):
-            if gui_cb:
-                gui_cb(lines)
-        self.protocol.send_message("pause \"{}\"".format(device), controller_cb)
+        cmd = "pause \"{}\"".format(device)
+        self.protocol.send_message(cmd, partial(self.cb, gui_cb))
 
     def resume(self, gui_cb, device):
-        def controller_cb(lines):
-            if gui_cb:
-                gui_cb(lines)
-        self.protocol.send_message("resume \"{}\"".format(device), controller_cb)
+        cmd = "resume \"{}\"".format(device)
+        self.protocol.send_message(cmd, partial(self.cb, gui_cb))
 
     def start_logs(self, gui_cb):
-        def controller_cb(lines):
-            if gui_cb:
-                for line in lines:
-                    gui_cb(json.loads(line))
-        self.protocol.send_message("tracelog start", controller_cb, flush=True)
+        cmd = "tracelog start"
+        self.protocol.send_message(cmd, partial(self.cb, gui_cb), flush=True)
 
     def stop_logs(self):
-        self.protocol.send_message("tracelog stop", flush=True)
+        cmd = "tracelog stop"
+        self.protocol.send_message(cmd, partial(self.cb, gui_cb))
 
 def connect(loop, path):
     future = loop.create_unix_connection(CncProtocol, path)
