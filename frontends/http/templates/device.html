@@ -6,7 +6,7 @@
         // show message in div#subscribe
         function showMessage(message) {
             var messageElem = $('#subscribe');
-            messageElem.append($('<span>').html(message + '\n'));
+            messageElem.prepend($('<div class="alert alert-success" role="alert">').html(message));
         }
 
         function WebSocketConnect() {
@@ -90,15 +90,16 @@
     <button id="resume" type="button" class="btn btn-primary">Resume</button>
 </div>
 
-<!--Messages-->
-<div id="subscribe"> </div>
-
-
 <ul>
 {% for key, value in info.items() %}
     <li> {{ key }}: {{ value }} </li>
 {% endfor %}
 </ul>
+
+<!--Messages-->
+<div id="subscribe"> </div>
+
+
 
 
 {% endblock body %}

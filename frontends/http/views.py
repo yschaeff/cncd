@@ -79,6 +79,12 @@ async def websocket_handler(request):
     await ws.prepare(request)
     device = request.match_info['device']
 
+    def cb(msg):
+        asyncio.ensure_future(ws.send_json(msg))
+        print(msg)
+    controller = request.app['controller']
+    controller.subscribe(cb, device)
+
     async for msg in ws:
         if msg.type == WSMsgType.ERROR:
             print('ws connection closed with exception %s' %
@@ -95,4 +101,5 @@ async def websocket_handler(request):
         await action(request, msg.data, device)
 
     print('websocket connection closed')
+    controller.unsubscribe(cb, device)
     return ws
