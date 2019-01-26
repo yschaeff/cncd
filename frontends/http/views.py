@@ -1,4 +1,4 @@
-from aiohttp import web
+from aiohttp import web, WSMsgType
 from functools import partial
 import asyncio
 import aiohttp_jinja2
@@ -74,3 +74,24 @@ async def device_view(request):
     data['info'] = info[device]
     data['device'] = device
     return data
+
+async def websocket_handler(request):
+    ws = web.WebSocketResponse()
+    await ws.prepare(request)
+
+    async for msg in ws:
+        if msg.type == WSMsgType.ERROR:
+            print('ws connection closed with exception %s' %
+                  ws.exception())
+            continue
+        if msg.type != WSMsgType.TEXT:
+            continue
+        if msg.data == 'close':
+            await ws.close()
+            continue
+        ## finally handle the request
+        print(msg.data)
+        await ws.send_str(msg.data + '/answer')
+
+    print('websocket connection closed')
+    return ws
