@@ -56,15 +56,14 @@ async def action(request, action, device):
         r =  await cncd_request(partial(controller.pause, device=device))
     elif action == 'resume':
         r =  await cncd_request(partial(controller.resume, device=device))
+    else:
+        ## not trusted, not sending
+        pass
 
 
 @aiohttp_jinja2.template('device.html')
 async def device_view(request):
     device = request.match_info['device']
-    post = await request.post()
-
-    if 'action' in post:
-        await action(request, post['action'], device)
 
     devlist = await get_device_list(request)
     info = await get_device_info(request, device)
@@ -78,6 +77,7 @@ async def device_view(request):
 async def websocket_handler(request):
     ws = web.WebSocketResponse()
     await ws.prepare(request)
+    device = request.match_info['device']
 
     async for msg in ws:
         if msg.type == WSMsgType.ERROR:
@@ -91,7 +91,8 @@ async def websocket_handler(request):
             continue
         ## finally handle the request
         print("received: " + msg.data)
-        await ws.send_str(msg.data + '/answer')
+        #await ws.send_str(msg.data + '/answer')
+        await action(request, msg.data, device)
 
     print('websocket connection closed')
     return ws

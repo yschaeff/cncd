@@ -3,33 +3,41 @@
 {% block extraheaders %}
 {% endblock extraheaders %}
 
+{% block title %}
+    CNCD
+{% endblock title %}
+
 {% block body %}
 
-<h1>CNCD Web Frontend</h1>
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="/">CNCD</a></li>
+  </ol>
+</nav>
+
+<div class="btn-group" role="group" aria-label="foo">
+    {% for handle, name in devices.items() %}
+        <a type="button" class="btn btn-primary" href="{{ url('device', device=handle) }}">{{ name }}</a>
+    {% endfor %}
+</div>
 
 <img src="{{ static('cncd.svg') }}" alt=logo />
 
-<h2>Devices</h2>
 
-<ul>
-    {% for handle, name in devices.items() %}
-    <li>
-        <a href="{{ url('device', device=handle) }}">{{ name }}</a>
-    </li>
-    {% endfor %}
-</ul>
 
 
 <h2>Webcams</h2>
 
-<ul>
-    {% for handle, camera in webcams.items() %}
-    <li>
-        <a href="{{ camera.url }}">{{ camera.name }}</a>
-        <img src="{{ camera.url }}"/>
-    </li>
-    {% endfor %}
-</ul>
+{% for handle, camera in webcams.items() %}
+    <div class="card" style="width: 18rem;">
+      <img src="{{ camera.url }}" class="card-img-top" alt="Webcam Stream">
+      <div class="card-body">
+        <h5 class="card-title">{{ handle }}</h5>
+        <p class="card-text">Webcam {{ camera.name }}.</p>
+        <a href="{{ camera.url }}" class="btn btn-primary">Open Stream</a>
+      </div>
+    </div>
+{% endfor %}
 
 
 <h2>Actions</h2>

@@ -2,87 +2,104 @@
 
 {% block extraheaders %}
 
-    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.6/umd/popper.min.js" integrity="sha384-wHAiFfRlMFy6i5SRaxvfOCifBUQy1xHdJ/yoi7FRNXMRBu5WHdZYu1hA6ZOblgut" crossorigin="anonymous"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/js/bootstrap.min.js" integrity="sha384-B0UglyR+jN6CkvvICOB2joaf5I4l3gm9GU6Hc1og6Ls7i6U/mkkaduKaBhlAXv9k" crossorigin="anonymous"></script>
-
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/css/bootstrap.min.css" integrity="sha384-GJzZqFGwb1QTTN6wy59ffF1BuGJpLSa9DkKMp0DgiMDm4iYMj70gZWKYbI706tWS" crossorigin="anonymous">
-
     <script type = "text/javascript">
         // show message in div#subscribe
         function showMessage(message) {
-            var messageElem = $('#subscribe'),
-                height = 0,
-                date = new Date();
-                options = {hour12: false};
-            messageElem.append($('<p>').html('[' + date.toLocaleTimeString('en-US', options) + '] ' + message + '\n'));
-            messageElem.find('p').each(function(i, value){
-                height += parseInt($(this).height());
-            });
-
-            messageElem.animate({scrollTop: height});
+            var messageElem = $('#subscribe');
+            messageElem.append($('<span>').html(message + '\n'));
         }
 
-        function WebSocketTest()
-        {
-            if ("WebSocket" in window) {
-                var sock = new WebSocket("ws://" + window.location.host + "{{ url('ws') }}");
+        function WebSocketConnect() {
+            if (!("WebSocket" in window)) return;
+            var sock = new WebSocket("ws://" + window.location.host + "{{ url('ws', device=device) }}");
 
-                sock.onopen = function()
-                {
-                     // Web Socket is connected, send data using send()
-                    sock.send("Message to send");
-                    <!--alert("Message is sent...");-->
-                };
+            sock.onopen = function() {
+                sock.send("Message to send");
+            };
 
-                sock.onmessage = function(evt)
-                {
-                    var msg = evt.data;
-                    showMessage(msg);
-                };
+            sock.onmessage = function(evt) {
+                var msg = evt.data;
+                showMessage(msg);
+            };
 
-                sock.onclose = function()
-                {
+            sock.onclose = function() {
+                elem = $('#connection_lost');
+                elem.append($('<div role="alert" class="alert alert-danger">').html(
+                    "Connection to server lost. Please reload this page."
+                ));
+            };
+            return sock;
+        }
 
-                };
-            } else {
-               // The browser doesn't support WebSocket
-            }
-         }
+        function ready() {
+            sock = WebSocketConnect()
+            $('#connect').on('click', function(event) { sock.send("connect"); });
+            $('#disconnect').on('click', function(event) { sock.send("disconnect"); });
+            $('#start').on('click', function(event) { sock.send("start"); });
+            $('#stop').on('click', function(event) { sock.send("stop"); });
+            $('#abort').on('click', function(event) { sock.send("abort"); });
+            $('#pause').on('click', function(event) { sock.send("pause"); });
+            $('#resume').on('click', function(event) { sock.send("resume"); });
+        }
+        $(document).ready(ready);
       </script>
 
 {% endblock extraheaders %}
 
+
+
+{% block title %}
+    {{ devices[device] }}
+{% endblock title %}
+
+
+
 {% block body %}
-      <div id = "sse">
-         <a href = "javascript:WebSocketTest()">Run WebSocket</a>
-      </div>
-    <div id="subscribe">
-        <p> xxx </p>
 
-    </div>
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="/">CNCD</a></li>
+    <li class="breadcrumb-item active" aria-current="page">{{ devices[device] }}</li>
+  </ol>
+</nav>
 
-    <h1> {{ device }} </h1>
 
+<div id="connection_lost"></div>
+
+<h1> {{ devices[device] }} </h1>
+
+<div class="dropdown">
+  <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+    Other Devices
+  </button>
+  <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
     {% for handle, name in devices.items() %}
-        <a href="{{ url('device', device=handle) }}">Device: {{ name }}</a>
+        <a class="dropdown-item" href="{{ url('device', device=handle) }}">{{ name }}</a>
     {% endfor %}
+  </div>
+</div>
 
-    <ul>
-    {% for key, value in info.items() %}
+
+<div class="btn-group" role="group" aria-label="foo">
+    <button id="connect" type="button" class="btn btn-primary">Connect</button>
+    <button id="disconnect" type="button" class="btn btn-danger">Disconnect</button>
+    <button id="start" type="button" class="btn btn-primary">Start</button>
+    <button id="stop" type="button" class="btn btn-warning">Stop</button>
+    <button id="abort" type="button" class="btn btn-warning">Abort</button>
+    <button id="pause" type="button" class="btn btn-primary">Pause</button>
+    <button id="resume" type="button" class="btn btn-primary">Resume</button>
+</div>
+
+<!--Messages-->
+<div id="subscribe"> </div>
+
+
+<ul>
+{% for key, value in info.items() %}
     <li> {{ key }}: {{ value }} </li>
-    {% endfor %}
-    </ul>
+{% endfor %}
+</ul>
 
-    <form action="{{ url('device', device=device) }}" method="post">
-        <input type="submit" name="action" value="connect"/>
-        <input type="submit" name="action" value="disconnect"/>
-        <input type="submit" name="action" value="start"/>
-        <input type="submit" name="action" value="stop"/>
-        <input type="submit" name="action" value="abort"/>
-        <input type="submit" name="action" value="pause"/>
-        <input type="submit" name="action" value="resume"/>
-    </form>
 
 {% endblock body %}
 
