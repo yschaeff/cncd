@@ -1,5 +1,8 @@
 {% extends "layout.html" %}
 
+{% block extraheaders %}
+{% endblock extraheaders %}
+
 {% block body %}
 
 <h1>CNCD Web Frontend</h1>
@@ -23,9 +26,7 @@
     {% for handle, camera in webcams.items() %}
     <li>
         <a href="{{ camera.url }}">{{ camera.name }}</a>
-        <video controls>
-            <source src="{{ camera.url }}">
-        </video>
+        <img src="{{ camera.url }}"/>
     </li>
     {% endfor %}
 </ul>
