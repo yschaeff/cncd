@@ -23,6 +23,9 @@
     {% for handle, camera in webcams.items() %}
     <li>
         <a href="{{ camera.url }}">{{ camera.name }}</a>
+        <video controls>
+            <source src="{{ camera.url }}">
+        </video>
     </li>
     {% endfor %}
 </ul>

@@ -40,9 +40,31 @@ async def index(request):
     data.update(actions)
     return data
 
+async def action(request, action, device):
+    controller = request.app['controller']
+    if action == 'connect':
+        r =  await cncd_request(partial(controller.connect, device=device))
+    elif action == 'disconnect':
+        r =  await cncd_request(partial(controller.disconnect, device=device))
+    elif action == 'start':
+        r =  await cncd_request(partial(controller.start, device=device))
+    elif action == 'stop':
+        r =  await cncd_request(partial(controller.stop, device=device))
+    elif action == 'abort':
+        r =  await cncd_request(partial(controller.abort, device=device))
+    elif action == 'pause':
+        r =  await cncd_request(partial(controller.pause, device=device))
+    elif action == 'resume':
+        r =  await cncd_request(partial(controller.resume, device=device))
+
+
 @aiohttp_jinja2.template('device.html')
 async def device_view(request):
     device = request.match_info['device']
+    post = await request.post()
+
+    if 'action' in post:
+        await action(request, post['action'], device)
 
     devlist = await get_device_list(request)
     info = await get_device_info(request, device)

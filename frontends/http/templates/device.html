@@ -14,5 +14,15 @@
     {% endfor %}
     </ul>
 
+    <form action="{{ url('device', device=device) }}" method="post">
+        <input type="submit" name="action" value="connect"/>
+        <input type="submit" name="action" value="disconnect"/>
+        <input type="submit" name="action" value="start"/>
+        <input type="submit" name="action" value="stop"/>
+        <input type="submit" name="action" value="abort"/>
+        <input type="submit" name="action" value="pause"/>
+        <input type="submit" name="action" value="resume"/>
+    </form>
+
 {% endblock body %}
 
