@@ -90,7 +90,7 @@ async def websocket_handler(request):
             await ws.close()
             continue
         ## finally handle the request
-        print(msg.data)
+        print("received: " + msg.data)
         await ws.send_str(msg.data + '/answer')
 
     print('websocket connection closed')

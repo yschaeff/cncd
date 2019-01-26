@@ -1,45 +1,66 @@
 {% extends "layout.html" %}
 
 {% block extraheaders %}
-      <script type = "text/javascript">
-         function WebSocketTest() {
 
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.6/umd/popper.min.js" integrity="sha384-wHAiFfRlMFy6i5SRaxvfOCifBUQy1xHdJ/yoi7FRNXMRBu5WHdZYu1hA6ZOblgut" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/js/bootstrap.min.js" integrity="sha384-B0UglyR+jN6CkvvICOB2joaf5I4l3gm9GU6Hc1og6Ls7i6U/mkkaduKaBhlAXv9k" crossorigin="anonymous"></script>
+
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/css/bootstrap.min.css" integrity="sha384-GJzZqFGwb1QTTN6wy59ffF1BuGJpLSa9DkKMp0DgiMDm4iYMj70gZWKYbI706tWS" crossorigin="anonymous">
+
+    <script type = "text/javascript">
+        // show message in div#subscribe
+        function showMessage(message) {
+            var messageElem = $('#subscribe'),
+                height = 0,
+                date = new Date();
+                options = {hour12: false};
+            messageElem.append($('<p>').html('[' + date.toLocaleTimeString('en-US', options) + '] ' + message + '\n'));
+            messageElem.find('p').each(function(i, value){
+                height += parseInt($(this).height());
+            });
+
+            messageElem.animate({scrollTop: height});
+        }
+
+        function WebSocketTest()
+        {
             if ("WebSocket" in window) {
-               alert("WebSocket is supported by your Browser!");
+                var sock = new WebSocket("ws://" + window.location.host + "{{ url('ws') }}");
 
-               // Let us open a web socket
-               var ws = new WebSocket("ws://localhost:8080/ws");
+                sock.onopen = function()
+                {
+                     // Web Socket is connected, send data using send()
+                    sock.send("Message to send");
+                    <!--alert("Message is sent...");-->
+                };
 
-               ws.onopen = function() {
+                sock.onmessage = function(evt)
+                {
+                    var msg = evt.data;
+                    showMessage(msg);
+                };
 
-                  // Web Socket is connected, send data using send()
-                  ws.send("Message to send");
-                  alert("Message is sent...");
-               };
+                sock.onclose = function()
+                {
 
-               ws.onmessage = function (evt) {
-                  var received_msg = evt.data;
-                  alert("Message is received...");
-               };
-
-               ws.onclose = function() {
-
-                  // websocket is closed.
-                  alert("Connection is closed...");
-               };
+                };
             } else {
-
                // The browser doesn't support WebSocket
-               alert("WebSocket NOT supported by your Browser!");
             }
          }
       </script>
+
 {% endblock extraheaders %}
 
 {% block body %}
       <div id = "sse">
          <a href = "javascript:WebSocketTest()">Run WebSocket</a>
       </div>
+    <div id="subscribe">
+        <p> xxx </p>
+
+    </div>
 
     <h1> {{ device }} </h1>
 
