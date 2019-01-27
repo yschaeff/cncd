@@ -7,6 +7,13 @@
         function showMessage(message) {
             var messageElem = $('#subscribe');
             messageElem.prepend($('<div class="alert alert-success" role="alert">').html(message));
+            var info = JSON.parse(message).info;
+            for (let key in info) {
+                let value = info[key];
+                var elem = $('#'+key+'');
+                elem.html(key + " " + value);
+            }
+            
         }
 
         function WebSocketConnect() {
@@ -23,7 +30,7 @@
             };
 
             sock.onclose = function() {
-                elem = $('#connection_lost');
+                var elem = $('#connection_lost');
                 elem.append($('<div role="alert" class="alert alert-danger">').html(
                     "Connection to server lost. Please reload this page."
                 ));
@@ -32,7 +39,7 @@
         }
 
         function ready() {
-            sock = WebSocketConnect()
+            var sock = WebSocketConnect()
             $('#connect').on('click', function(event) { sock.send("connect"); });
             $('#disconnect').on('click', function(event) { sock.send("disconnect"); });
             $('#start').on('click', function(event) { sock.send("start"); });
@@ -70,7 +77,7 @@
 
 <div class="dropdown">
   <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-    Other Devices
+    {{ devices[device] }}
   </button>
   <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
     {% for handle, name in devices.items() %}
@@ -90,9 +97,9 @@
     <button id="resume" type="button" class="btn btn-primary">Resume</button>
 </div>
 
-<ul>
+<ul id="info">
 {% for key, value in info.items() %}
-    <li> {{ key }}: {{ value }} </li>
+    <li id="{{key}}"> {{ key }}: {{ value }} </li>
 {% endfor %}
 </ul>
 

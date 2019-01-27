@@ -1,7 +1,10 @@
 from aiohttp import web, WSMsgType
 from functools import partial
-import asyncio
+import asyncio, sys
 import aiohttp_jinja2
+import logging as log
+
+log.basicConfig()
 
 async def cncd_request(func):
     event = asyncio.Event()
@@ -11,8 +14,8 @@ async def cncd_request(func):
         event.set()
     func(receive_cb)
     await event.wait()
-    #print(func)
-    #print(data)
+    #log.warning(func)
+    #log.warning(data)
     return data
 
 async def get_device_list(request):
@@ -74,32 +77,35 @@ async def device_view(request):
     data['device'] = device
     return data
 
+async def subscription_handler(ws, channel, msg):
+    log.warning(msg)
+    ## msg is json like object
+    info = msg[channel]
+    await ws.send_json({'info':info})
+
 async def websocket_handler(request):
+    controller = request.app['controller']
     ws = web.WebSocketResponse()
     await ws.prepare(request)
     device = request.match_info['device']
 
-    def cb(msg):
-        asyncio.ensure_future(ws.send_json(msg))
-        print(msg)
-    controller = request.app['controller']
-    controller.subscribe(cb, device)
+    channel = device
+    def subscribe_cb(msg):
+        if not msg: return
+        task = request.app.loop.create_task(subscription_handler(ws, channel, msg))
+    controller.subscribe(subscribe_cb, channel)
 
     async for msg in ws:
         if msg.type == WSMsgType.ERROR:
-            print('ws connection closed with exception %s' %
+            log.warning('ws connection closed with exception %s' %
                   ws.exception())
             continue
         if msg.type != WSMsgType.TEXT:
             continue
-        if msg.data == 'close':
-            await ws.close()
-            continue
-        ## finally handle the request
-        print("received: " + msg.data)
-        #await ws.send_str(msg.data + '/answer')
+        log.warning("received: " + msg.data)
         await action(request, msg.data, device)
 
-    print('websocket connection closed')
-    controller.unsubscribe(cb, device)
+    log.warning('websocket connection closed')
+    controller.unsubscribe(subscribe_cb, device)
     return ws
+
