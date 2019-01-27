@@ -31,12 +31,17 @@ async def get_device_info(request, device):
     controller = request.app['controller']
     return await cncd_request(partial(controller.get_data, device=device))
 
+async def cache(request, coro):
+    if coro not in request.app:
+        request.app[coro] = await coro(request)
+    return request.app[coro]
 
 @aiohttp_jinja2.template('index.html')
 async def index(request):
-    devlist = await get_device_list(request)
-    cameras = await get_camera_list(request)
-    actions = await get_action_list(request)
+    devlist = await cache(request, get_device_list)
+    cameras = await cache(request, get_camera_list)
+    actions = await cache(request, get_action_list)
+
     data = {}
     data.update(devlist)
     data.update(cameras)
@@ -68,12 +73,10 @@ async def action(request, action, device):
 async def device_view(request):
     device = request.match_info['device']
 
-    devlist = await get_device_list(request)
-    info = await get_device_info(request, device)
+    devlist = await cache(request, get_device_list)
 
     data = {}
     data.update(devlist)
-    data['info'] = info[device]
     data['device'] = device
     return data
 
@@ -89,16 +92,19 @@ async def websocket_handler(request):
     await ws.prepare(request)
     device = request.match_info['device']
 
+    info = await get_device_info(request, device)
+    await ws.send_json({'info':info[device]})
+
     channel = device
     def subscribe_cb(msg):
         if not msg: return
         task = request.app.loop.create_task(subscription_handler(ws, channel, msg))
-    controller.subscribe(subscribe_cb, channel)
+    subscriber = request.app['subscriber']
+    ticket = subscriber.subscribe(channel, subscribe_cb)
 
     async for msg in ws:
         if msg.type == WSMsgType.ERROR:
-            log.warning('ws connection closed with exception %s' %
-                  ws.exception())
+            log.warning('ws connection closed with exception %s' % ws.exception())
             continue
         if msg.type != WSMsgType.TEXT:
             continue
@@ -106,6 +112,6 @@ async def websocket_handler(request):
         await action(request, msg.data, device)
 
     log.warning('websocket connection closed')
-    controller.unsubscribe(subscribe_cb, device)
+    subscriber.unsubscribe(channel, ticket)
     return ws
 

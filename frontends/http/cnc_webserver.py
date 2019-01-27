@@ -5,6 +5,8 @@ import aiohttp_jinja2
 import jinja2
 from routes import setup_routes
 
+from collections import defaultdict
+from functools import partial
 import sys, asyncio
 sys.path.append('..')
 ## maybe connect should return a controller
@@ -19,9 +21,37 @@ async def cncd_connect(app):
     app['transport'] = transport
     app['protocol'] = protocol
     app['controller'] = Controller(protocol)
+    app['subscriber'] = Subscriber(app['controller'])
 
 async def cncd_disconnect(error = None):
     app['transport'].close()
+
+class Subscriber:
+    def __init__(self, controller):
+        self.controller = controller
+        self.subscriptions = defaultdict(dict)
+        self.ticket = 0
+    def cb_wrapper(self, channel, msg):
+        subscribers = self.subscriptions[channel]
+        for ticket, callback in subscribers.items():
+            callback(msg)
+    def subscribe(self, channel, callback):
+        subscribers = self.subscriptions[channel]
+        if not subscribers:
+            self.controller.subscribe(partial(self.cb_wrapper, channel), channel)
+        ticket = self.ticket
+        self.subscriptions[channel][ticket] = callback
+        self.ticket += 1
+        return ticket
+    def unsubscribe(self, channel, ticket):
+        if channel not in self.subscriptions: return
+        subscribers = self.subscriptions[channel]
+        try:
+            subscribers.pop(ticket)
+        except KeyError:
+            pass
+        if not subscribers:
+            self.controller.unsubscribe(None, channel)
 
 app = web.Application()
 app['config'] = conf
