@@ -402,8 +402,10 @@ class ActionWindow(Window):
             self.display_errors(json_msg)
             actions = json_msg.get('actions', None)
             if not actions: return
-            for line in actions:
-                cmd, label, description = line.values()
+            for action in actions:
+                cmd = action['command']
+                label = action['short']
+                description = action['long']
                 button = Button("[{}] - {}".format(label, description))
                 urwid.connect_signal(button, 'click', button_cb, user_args=[cmd])
                 self.walker.append(AttrMap(button, None, focus_map='selected'))
