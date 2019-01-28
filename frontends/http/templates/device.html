@@ -12,7 +12,12 @@
             var infoelem = $('ul#info');
             for (var key in info) {
                 var value = info[key];
-                infoelem.prepend($('<li>').html(key + "  " + value));
+                var li = $("ul#info #"+ key)
+                if (li.length == 0) {
+                    infoelem.prepend($('<li id='+key+'>').html("<b>" + key + ":</b> " + value));
+                } else {
+                    li.html("<b>" + key + ":</b> " + value);
+                }
             }
         }
 
