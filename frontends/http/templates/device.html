@@ -7,13 +7,13 @@
         function showMessage(message) {
             var messageElem = $('#subscribe');
             messageElem.prepend($('<div class="alert alert-success" role="alert">').html(message));
+
             var info = JSON.parse(message).info;
-            for (let key in info) {
-                let value = info[key];
-                var elem = $('#'+key+'');
-                elem.html(key + " " + value);
+            var infoelem = $('ul#info');
+            for (var key in info) {
+                var value = info[key];
+                infoelem.prepend($('<li>').html(key + "  " + value));
             }
-            
         }
 
         function WebSocketConnect() {
@@ -98,9 +98,6 @@
 </div>
 
 <ul id="info">
-{% for key, value in info.items() %}
-    <li id="{{key}}"> {{ key }}: {{ value }} </li>
-{% endfor %}
 </ul>
 
 <!--Messages-->
