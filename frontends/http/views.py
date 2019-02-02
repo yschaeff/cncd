@@ -102,16 +102,19 @@ async def websocket_handler(request):
     subscriber = request.app['subscriber']
     ticket = subscriber.subscribe(channel, subscribe_cb)
 
-    async for msg in ws:
-        if msg.type == WSMsgType.ERROR:
-            log.warning('ws connection closed with exception %s' % ws.exception())
-            continue
-        if msg.type != WSMsgType.TEXT:
-            continue
-        log.warning("received: " + msg.data)
-        await action(request, msg.data, device)
-
-    log.warning('websocket connection closed')
-    subscriber.unsubscribe(channel, ticket)
+    try:
+        async for msg in ws:
+            if msg.type == WSMsgType.ERROR:
+                log.warning('ws connection closed with exception %s' % ws.exception())
+                continue
+            if msg.type != WSMsgType.TEXT:
+                continue
+            log.warning("received: " + msg.data)
+            await action(request, msg.data, device)
+    except Exception as e:
+        log.critical('UNHANDLED EXCEPTION: {}'.format(e))
+    finally:
+        log.warning('websocket connection closed')
+        subscriber.unsubscribe(channel, ticket)
     return ws
 
