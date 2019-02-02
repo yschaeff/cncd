@@ -168,10 +168,10 @@ def connect(loop, path):
     try:
         transport, protocol = loop.run_until_complete(future)
     except ConnectionRefusedError as e:
-        log.critical("Unable to set up connection for [{}] to '{}'".format(args.instance, socketpath))
+        log.critical("Unable to set up connection to '{}'".format(path))
         return None
     except FileNotFoundError as e:
-        log.critical("Unix domain socket '{}' might not exist.".format(socketpath))
+        log.critical("Unix domain socket '{}' might not exist.".format(path))
         return None
     return (transport, protocol)
 

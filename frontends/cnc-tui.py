@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 import asyncio, concurrent
-import tui
+import tui.tui as tui
 from functools import partial
 from collections import defaultdict
 import logging as log
@@ -10,7 +10,6 @@ import argparse, time, subprocess
 from configparser import ConfigParser
 from os.path import expanduser
 
-sys.path.append('..')
 from libcnc.cnc import CncProtocol, Controller, connect
 
 def main(loop, args):

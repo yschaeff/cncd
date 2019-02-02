@@ -3,12 +3,11 @@
 from aiohttp import web
 import aiohttp_jinja2
 import jinja2
-from routes import setup_routes
+from httpui.routes import setup_routes
 
 from collections import defaultdict
 from functools import partial
 import sys, asyncio
-sys.path.append('..')
 ## maybe connect should return a controller
 from libcnc.cnc import Controller, connect, CncProtocol
 
@@ -57,7 +56,7 @@ app = web.Application()
 app['config'] = conf
 app['static_root_url'] = '/static'
 aiohttp_jinja2.setup(app, context_processors=[aiohttp_jinja2.request_processor],
-        loader=jinja2.FileSystemLoader('./templates'))
+        loader=jinja2.FileSystemLoader('httpui/templates'))
 
 app.on_startup.append(cncd_connect)
 app.on_shutdown.append(cncd_disconnect)
