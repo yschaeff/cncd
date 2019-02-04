@@ -1,13 +1,11 @@
 import logging as log
 from plugins.pluginskel import SkeletonPlugin
-import os
+import os, re
 from time import time
-from collections import defaultdict
 
 ## Keeps track of the progress in de gcode file
 ## This plugin should be a model to other plugins and will therefore have
 ## extensive comments.
-
 
 ## A class Plugin MUST be present in this file
 ## You are recommended to inherit from the SkeletonPlugin. So that when new
@@ -53,9 +51,8 @@ class Plugin(SkeletonPlugin):
             ('robot', 'Device.gcode_readline_hook'):[self.readline_cb],
             ('robot', 'Device.gcode_done_hook'):[self.done_cb],
         }
-        ## This plugin keeps some internal administration:
-        self.last_update = defaultdict(int)
-        self.accumulate = defaultdict(int)
+
+        self.g_pattern = re.compile(r"(?:\s+([XYZEF])\s*(-?\d*(?:\.\d+)?))")
 
     ## Specifically defined for this plugin. However the function signature is
     ## important. The function MUST be defined async. Because CNCD is single
@@ -78,7 +75,62 @@ class Plugin(SkeletonPlugin):
         await self.datastore.update(handle, "filename", filename)
         await self.datastore.update(handle, "filesize", size)
         await self.datastore.update(handle, "progress", 0)
-        self.accumulate[handle] = 0
+        self.localstore.update(handle, 'accumulate', 0)
+        self.localstore.update(handle, 'last_update', 0)
+        await self.analyse_gcode(handle, filename)
+
+    async def process_line(self, handle, line):
+        if line.startswith('M82'):
+            self.localstore.update(handle, 'absE', True)
+        elif line.startswith('M83'):
+            self.localstore.update(handle, 'absE', False)
+        elif line.startswith('G90'):
+            self.localstore.update(handle, 'absE', True)
+            self.localstore.update(handle, 'absXYZ', True)
+        elif line.startswith('G91'):
+            self.localstore.update(handle, 'absE', False)
+            self.localstore.update(handle, 'absXYZ', False)
+        elif line.startswith('G0') or line.startswith('G1'):
+            d = self.parseG(self.g_pattern, line)
+            if 'Z' in d:
+                if self.localstore.get(handle, 'absXYZ'):
+                    self.localstore.update(handle, 'Z', d['Z'])
+                else:
+                    self.localstore.inc(handle, 'Z', d['Z'])
+            if 'E' in d:
+                if self.localstore.get(handle, 'absE'):
+                    self.localstore.update(handle, 'E', d['E'])
+                else:
+                    self.localstore.inc(handle, 'E', d['E'])
+        elif line.startswith('G92'):
+            #set absolute positions
+            d = self.parseG(self.g_pattern, line)
+            if 'Z' in d:
+                self.localstore.update(handle, 'Z', d['Z'])
+            if 'E' in d:
+                self.localstore.update(handle, 'E', d['E'])
+
+    async def analyse_gcode(self, handle, filename):
+        self.localstore.update(handle, 'E', 0)
+        self.localstore.update(handle, 'Z', 0)
+        self.localstore.update(handle, 'absE', False)
+        self.localstore.update(handle, 'absXYZ', False)
+        with open(filename) as f:
+            for line in f:
+                l = line.strip()
+                await self.process_line(handle, l)
+        await self.datastore.update(handle, "final_e", self.localstore.get(handle, 'E'))
+        await self.datastore.update(handle, "final_z", self.localstore.get(handle, 'Z'))
+
+    def parseG(self, pattern, line):
+        d = dict()
+        for dim, val in pattern.findall(line):
+            try:
+                v = float(val)
+            except ValueError:
+                continue
+            d[dim] = v
+        return d
 
     async def done_cb(self, *args, **kwargs) -> None:
         device, = args
@@ -87,7 +139,7 @@ class Plugin(SkeletonPlugin):
         ## We only occationally (2Hz) write progress to the datastore as to
         ## not load the client/CNCD to much. So when we are done we might still
         ## have some information buffered, Flush that.
-        accumulate = self.accumulate[handle]
+        accumulate = self.localstore.get(handle, 'accumulate')
         progress = self.datastore.get(handle, "progress")
         await self.datastore.update(handle, "progress", progress+accumulate)
 
@@ -97,13 +149,18 @@ class Plugin(SkeletonPlugin):
         now = time()
         ## Assuming each character takes up one byte add lenght of string
         ## to progress. Only every half a second write to datastore.
-        self.accumulate[handle] += len(line)
-        if now - self.last_update[handle] > .5:
-            self.last_update[handle] = now
-            accumulate = self.accumulate[handle]
-            self.accumulate[handle] = 0
+        self.localstore.inc(handle, 'accumulate', len(line))
+        accumulate = self.localstore.get(handle, 'accumulate')
+
+        await self.process_line(handle, line.decode())
+
+        if now - self.localstore.get(handle, 'last_update') > .5:
+            self.localstore.update(handle, 'last_update', now)
+            self.localstore.update(handle, 'accumulate', 0)
             progress = self.datastore.get(handle, "progress")
             await self.datastore.update(handle, "progress", progress+accumulate)
+            await self.datastore.update(handle, "current_z", self.localstore.get(handle, 'Z'))
+            await self.datastore.update(handle, "current_e", self.localstore.get(handle, 'E'))
 
 
     ## Called when user/gui calls a command in HANDLES. Argv is this command
