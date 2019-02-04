@@ -1,8 +1,20 @@
 import logging as log
 from pluginmanager import Callback, Action
+from collections import defaultdict
 
 # SkeletonPlugin has the minimum required functions and properties a plugin
 # MUST have. It is recommended to inherit all plugins from here.
+
+class PrivateStore:
+    """ structure to store data for this plugib only """
+    def __init__(self):
+        self.devs = defaultdict(dict)
+    def update(self, handle, key, value):
+        self.devs[handle][key] = value
+    def inc(self, handle, key, value):
+        self.devs[handle][key] += value
+    def get(self, handle, key):
+        return self.devs[handle][key]
 
 class SkeletonPlugin():
     """Inherit from this class for all Plugins"""
@@ -15,6 +27,7 @@ class SkeletonPlugin():
 
     def __init__(self, datastore, gctx):
         self.datastore = datastore
+        self.localstore = PrivateStore()
         self.gctx = gctx
 
     async def handle_command(self, gctx, cctx, lctx):
