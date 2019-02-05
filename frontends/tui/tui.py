@@ -3,7 +3,7 @@
 import urwid
 from urwid import Frame, Text, Filler, AttrMap, ListBox, Divider, SimpleFocusListWalker,\
     Button, WidgetWrap, Pile, ExitMainLoop, Columns, Edit, Padding, BoxAdapter,\
-    SimpleListWalker
+    SimpleListWalker, ProgressBar
 from functools import partial
 import logging as log
 import re, time
@@ -20,8 +20,19 @@ palette = [('status', 'white,bold', 'dark blue'), \
         ('error', 'light red', 'black'),
         ('critical', 'white', 'dark red'),
 
+        ('progress_normal', 'black', 'light gray'),
+        ('progress_complete', 'white', 'brown'),
+
         ('Tlabel', 'yellow', 'black'),
         ('Flabel', 'white', 'black')]
+
+class NamedProgressBar(ProgressBar):
+    def __init__(self, label, normal, complete, current=0, done=100, satt=None):
+        if int(done) == 0: done = 100
+        self.label = label
+        super().__init__(normal, complete, current, done, satt)
+    def get_text(self):
+        return self.label
 
 class Window(urwid.WidgetWrap):
     def __init__(self, tui):
@@ -257,6 +268,10 @@ class DeviceWindow(Window):
                 fprog = int(status['progress'])
                 tstart = float(status['starttime'])
                 tstop = float(status['stoptime'])
+                cz = float(status['current_z'])
+                fz = float(status['final_z'])
+                ce = float(status['current_e'])
+                fe = float(status['final_e'])
                 offset = self.tui.controller.time_offset
                 if tstop == -1:
                     d = time.time() - tstart - offset
@@ -264,13 +279,31 @@ class DeviceWindow(Window):
                     d = tstop - tstart
                 rate = fprog/fsize
                 attr = 'Flabel'
-                w = AttrMap(Text("progress: {}/{} ({:0.2f}%) ({}B/s)".format(fprog, fsize, rate*100, int(fprog/d))), attr, attr)
-                container.contents.append((w, container.options('pack')))
+                def div(a, b):
+                    if b == 0:
+                        return 0
+                    return a/b
+
+                label = "File: {:0.0f}/{:0.0f} Kb ({:0.2f}%)".format(fprog/1024, fsize/1024, rate*100)
+                bar = NamedProgressBar(label, 'progress_normal', 'progress_complete', fprog, fsize, 'status')
+                container.contents.append((bar, container.options('pack')))
+
+                label = "Z Travel: {:0.2f}/{:0.2f} mm ({:0.2f}%)".format(cz, fz, div(cz,fz)*100)
+                bar = NamedProgressBar(label, 'progress_normal', 'progress_complete', cz, fz, 'status')
+                container.contents.append((bar, container.options('pack')))
+
+                label = "Extruded: {:0.0f}/{:0.0f} mm ({:0.2f}%)".format(ce, fe, div(ce,fe)*100)
+                bar = NamedProgressBar(label, 'progress_normal', 'progress_complete', ce, fe, 'status')
+                container.contents.append((bar, container.options('pack')))
             except:
                 pass
             finally:
                 ignore.append('filesize')
                 ignore.append('progress')
+                ignore.append('current_z')
+                ignore.append('final_z')
+                ignore.append('current_e')
+                ignore.append('final_e')
 
         def parse_status(status, container, ignore):
             stat_cols = Columns([], 0)

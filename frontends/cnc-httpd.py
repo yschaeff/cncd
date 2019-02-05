@@ -12,6 +12,7 @@ import sys, asyncio
 from libcnc.cnc import Controller, connect, CncProtocol
 
 conf = {'unix_socket': '/tmp/cncd.sock'}
+conf = {'unix_socket': '/home/yuri/repo/cncd/.cncd.sock'}
 
 async def cncd_connect(app):
     conf = app['config']

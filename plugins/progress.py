@@ -1,6 +1,6 @@
 import logging as log
 from plugins.pluginskel import SkeletonPlugin
-import os, re
+import os, re, asyncio
 from time import time
 
 ## Keeps track of the progress in de gcode file
@@ -77,50 +77,58 @@ class Plugin(SkeletonPlugin):
         await self.datastore.update(handle, "progress", 0)
         self.localstore.update(handle, 'accumulate', 0)
         self.localstore.update(handle, 'last_update', 0)
-        await self.analyse_gcode(handle, filename)
 
-    async def process_line(self, handle, line):
+        await self.datastore.update(handle, "current_e", 0)
+        await self.datastore.update(handle, "current_z", 0)
+        await self.datastore.update(handle, "final_e", 1)
+        await self.datastore.update(handle, "final_z", 1)
+        self.localstore.update(handle, 'E', 0)
+        self.localstore.update(handle, 'Z', 0)
+
+        asyncio.ensure_future(self.analyse_gcode(handle, filename))
+
+    async def process_line(self, handle, line, pfx=""):
         if line.startswith('M82'):
-            self.localstore.update(handle, 'absE', True)
+            self.localstore.update(handle, pfx+'absE', True)
         elif line.startswith('M83'):
-            self.localstore.update(handle, 'absE', False)
+            self.localstore.update(handle, pfx+'absE', False)
         elif line.startswith('G90'):
-            self.localstore.update(handle, 'absE', True)
-            self.localstore.update(handle, 'absXYZ', True)
+            self.localstore.update(handle, pfx+'absE', True)
+            self.localstore.update(handle, pfx+'absXYZ', True)
         elif line.startswith('G91'):
-            self.localstore.update(handle, 'absE', False)
-            self.localstore.update(handle, 'absXYZ', False)
+            self.localstore.update(handle, pfx+'absE', False)
+            self.localstore.update(handle, pfx+'absXYZ', False)
         elif line.startswith('G0') or line.startswith('G1'):
             d = self.parseG(self.g_pattern, line)
             if 'Z' in d:
-                if self.localstore.get(handle, 'absXYZ'):
-                    self.localstore.update(handle, 'Z', d['Z'])
+                if self.localstore.get(handle, pfx+'absXYZ'):
+                    self.localstore.update(handle, pfx+'Z', d['Z'])
                 else:
-                    self.localstore.inc(handle, 'Z', d['Z'])
+                    self.localstore.inc(handle, pfx+'Z', d['Z'])
             if 'E' in d:
-                if self.localstore.get(handle, 'absE'):
-                    self.localstore.update(handle, 'E', d['E'])
+                if self.localstore.get(handle, pfx+'absE'):
+                    self.localstore.update(handle, pfx+'E', d['E'])
                 else:
-                    self.localstore.inc(handle, 'E', d['E'])
+                    self.localstore.inc(handle, pfx+'E', d['E'])
         elif line.startswith('G92'):
             #set absolute positions
             d = self.parseG(self.g_pattern, line)
             if 'Z' in d:
-                self.localstore.update(handle, 'Z', d['Z'])
+                self.localstore.update(handle, pfx+'Z', d['Z'])
             if 'E' in d:
-                self.localstore.update(handle, 'E', d['E'])
+                self.localstore.update(handle, pfx+'E', d['E'])
 
     async def analyse_gcode(self, handle, filename):
-        self.localstore.update(handle, 'E', 0)
-        self.localstore.update(handle, 'Z', 0)
-        self.localstore.update(handle, 'absE', False)
-        self.localstore.update(handle, 'absXYZ', False)
+        self.localstore.update(handle, 'init_E', 0)
+        self.localstore.update(handle, 'init_Z', 0)
+        self.localstore.update(handle, 'init_absE', False)
+        self.localstore.update(handle, 'init_absXYZ', False)
         with open(filename) as f:
             for line in f:
                 l = line.strip()
-                await self.process_line(handle, l)
-        await self.datastore.update(handle, "final_e", self.localstore.get(handle, 'E'))
-        await self.datastore.update(handle, "final_z", self.localstore.get(handle, 'Z'))
+                await self.process_line(handle, l, pfx="init_")
+        await self.datastore.update(handle, "final_e", self.localstore.get(handle, 'init_E'))
+        await self.datastore.update(handle, "final_z", self.localstore.get(handle, 'init_Z'))
 
     def parseG(self, pattern, line):
         d = dict()

@@ -18,7 +18,7 @@ class DummySerialConnection():
         asyncio.ensure_future(self.device.disconnect_done(None))
     def write(self, msg):
         async def slow_ack():
-            await asyncio.sleep(.1)
+            await asyncio.sleep(.01)
             await self.rx_queue.put("ok\n")
         task = asyncio.ensure_future(slow_ack())
 
