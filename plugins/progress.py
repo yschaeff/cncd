@@ -84,6 +84,10 @@ class Plugin(SkeletonPlugin):
         await self.datastore.update(handle, "final_z", 1)
         self.localstore.update(handle, 'E', 0)
         self.localstore.update(handle, 'Z', 0)
+        self.localstore.update(handle, 'E_push', 0)
+        self.localstore.update(handle, 'Z_push', 0)
+        self.localstore.update(handle, 'absE', False)
+        self.localstore.update(handle, 'absXYZ', False)
 
         asyncio.ensure_future(self.analyse_gcode(handle, filename))
 
@@ -114,21 +118,25 @@ class Plugin(SkeletonPlugin):
             #set absolute positions
             d = self.parseG(self.g_pattern, line)
             if 'Z' in d:
+                self.localstore.inc(handle, pfx+'Z_push', self.localstore.get(handle, pfx+'Z'))
                 self.localstore.update(handle, pfx+'Z', d['Z'])
             if 'E' in d:
+                self.localstore.inc(handle, pfx+'E_push', self.localstore.get(handle, pfx+'E'))
                 self.localstore.update(handle, pfx+'E', d['E'])
 
     async def analyse_gcode(self, handle, filename):
         self.localstore.update(handle, 'init_E', 0)
         self.localstore.update(handle, 'init_Z', 0)
+        self.localstore.update(handle, 'init_E_push', 0)
+        self.localstore.update(handle, 'init_Z_push', 0)
         self.localstore.update(handle, 'init_absE', False)
         self.localstore.update(handle, 'init_absXYZ', False)
         with open(filename) as f:
             for line in f:
                 l = line.strip()
                 await self.process_line(handle, l, pfx="init_")
-        await self.datastore.update(handle, "final_e", self.localstore.get(handle, 'init_E'))
-        await self.datastore.update(handle, "final_z", self.localstore.get(handle, 'init_Z'))
+        await self.datastore.update(handle, "final_e", self.localstore.get(handle, 'init_E_push') + self.localstore.get(handle, 'init_E'))
+        await self.datastore.update(handle, "final_z", self.localstore.get(handle, 'init_Z_push') + self.localstore.get(handle, 'init_Z'))
 
     def parseG(self, pattern, line):
         d = dict()
@@ -150,6 +158,8 @@ class Plugin(SkeletonPlugin):
         accumulate = self.localstore.get(handle, 'accumulate')
         progress = self.datastore.get(handle, "progress")
         await self.datastore.update(handle, "progress", progress+accumulate)
+        await self.datastore.update(handle, "current_z", self.localstore.get(handle, 'Z_push') + self.localstore.get(handle, 'Z'))
+        await self.datastore.update(handle, "current_e", self.localstore.get(handle, 'E_push') + self.localstore.get(handle, 'E'))
 
     async def readline_cb(self, *args, **kwargs) -> None:
         device, line = args
@@ -167,8 +177,8 @@ class Plugin(SkeletonPlugin):
             self.localstore.update(handle, 'accumulate', 0)
             progress = self.datastore.get(handle, "progress")
             await self.datastore.update(handle, "progress", progress+accumulate)
-            await self.datastore.update(handle, "current_z", self.localstore.get(handle, 'Z'))
-            await self.datastore.update(handle, "current_e", self.localstore.get(handle, 'E'))
+            await self.datastore.update(handle, "current_z", self.localstore.get(handle, 'Z_push') + self.localstore.get(handle, 'Z'))
+            await self.datastore.update(handle, "current_e", self.localstore.get(handle, 'E_push') + self.localstore.get(handle, 'E'))
 
 
     ## Called when user/gui calls a command in HANDLES. Argv is this command
