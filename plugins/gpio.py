@@ -88,8 +88,8 @@ class Plugin(SkeletonPlugin):
                 self.fs_at_close.append(partial(GPIO.remove_event_detect, pin))
 
         if export:
-            self.ACTIONS.append(Action("gpio-set {} 0".format(pin), "{} off".format(label), txt))
             self.ACTIONS.append(Action("gpio-set {} 1".format(pin), "{} on".format(label), txt))
+            self.ACTIONS.append(Action("gpio-set {} 0".format(pin), "{} off".format(label), txt))
 
 
     def gpio_set(self, argv):

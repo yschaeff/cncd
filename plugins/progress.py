@@ -91,7 +91,7 @@ class Plugin(SkeletonPlugin):
 
         asyncio.ensure_future(self.analyse_gcode(handle, filename))
 
-    async def process_line(self, handle, line, pfx=""):
+    def process_line(self, handle, line, pfx=""):
         if line.startswith('M82'):
             self.localstore.update(handle, pfx+'absE', True)
         elif line.startswith('M83'):
@@ -134,7 +134,9 @@ class Plugin(SkeletonPlugin):
         with open(filename) as f:
             for line in f:
                 l = line.strip()
-                await self.process_line(handle, l, pfx="init_")
+                self.process_line(handle, l, pfx="init_")
+                ## This sleep is important since the io above is not actually
+                ## blocking thus the plugin will not yield otherwise.
                 await asyncio.sleep(0)
         await self.datastore.update(handle, "final_e", self.localstore.get(handle, 'init_E_push') + self.localstore.get(handle, 'init_E'))
         await self.datastore.update(handle, "final_z", self.localstore.get(handle, 'init_Z_push') + self.localstore.get(handle, 'init_Z'))
@@ -171,7 +173,7 @@ class Plugin(SkeletonPlugin):
         self.localstore.inc(handle, 'accumulate', len(line))
         accumulate = self.localstore.get(handle, 'accumulate')
 
-        await self.process_line(handle, line.decode())
+        self.process_line(handle, line.decode())
 
         if now - self.localstore.get(handle, 'last_update') > .5:
             self.localstore.update(handle, 'last_update', now)
