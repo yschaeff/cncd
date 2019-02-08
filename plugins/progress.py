@@ -135,6 +135,7 @@ class Plugin(SkeletonPlugin):
             for line in f:
                 l = line.strip()
                 await self.process_line(handle, l, pfx="init_")
+                await asyncio.sleep(0)
         await self.datastore.update(handle, "final_e", self.localstore.get(handle, 'init_E_push') + self.localstore.get(handle, 'init_E'))
         await self.datastore.update(handle, "final_z", self.localstore.get(handle, 'init_Z_push') + self.localstore.get(handle, 'init_Z'))
 
