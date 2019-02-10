@@ -61,6 +61,7 @@ class Device():
         self.firmware = flavour.get_firmware(self.cfg.get('firmware', 'generic'))
         asyncio.ensure_future(self.store('paused', False))
         asyncio.ensure_future(self.store('idle', True))
+        asyncio.ensure_future(self.store('connected', False))
 
     def set_protocol(self, proto):
         self.protocol = proto
@@ -257,9 +258,10 @@ class Device():
             log.warning("File not found")
         except concurrent.futures._base.CancelledError:
             log.debug('start task cancelled')
-        self.file_task = None
-        asyncio.ensure_future(self.store('idle', True))
-        asyncio.ensure_future(self.gcode_done_hook())
+        finally:
+            self.file_task = None
+            asyncio.ensure_future(self.store('idle', True))
+            asyncio.ensure_future(self.gcode_done_hook())
 
     async def start(self, filename):
         if not self.ev_connected.is_set():
