@@ -3,8 +3,16 @@
 {% block extraheaders %}
 
     <script type = "text/javascript">
-        // show message in div#subscribe
-        function showMessage(message) {
+        var B_MAX = 100;
+        var B_CUR = 0;
+        var E_MAX = 100;
+        var E_CUR = 0;
+        var Z_MAX = 100;
+        var Z_CUR = 0;
+
+
+        function handle_message(message)
+        {
             var messageElem = $('#subscribe');
             messageElem.prepend($('<div class="alert alert-success" role="alert">').html(message));
 
@@ -12,25 +20,64 @@
             var infoelem = $('ul#info');
             for (var key in info) {
                 var value = info[key];
-                var li = $("ul#info #"+ key);
-                if (li.length == 0) {
-                    infoelem.prepend($('<li id='+key+'>').html("<b>" + key + ":</b> " + value));
-                } else {
-                    li.html("<b>" + key + ":</b> " + value);
+
+                function set_progress(label, cur, max, elem)
+                {
+                    var div = $(elem)
+                    percent = (cur/max) * 100
+                    div.attr('style', "width: " + percent + "%");
+                    div.attr('aria-valuenow', cur);
+                    div.attr('aria-valuemax', max);
+                    div.html('<b  class="lead">' + label + (cur.toFixed(0)) + "/" + (max.toFixed(0)) + " (" + percent.toFixed(2) + "%)</b>");
+
                 }
 
-
                 if (key == 'filesize') {
-                    id = "div#pb-b";
-                    var div = $(id)
-                    div.attr('style', "width: " +value);
+                    B_MAX = value;
+                    set_progress("File (bytes) ", B_CUR, B_MAX, "div#pb-b");
                 } else if (key == 'progress') {
-                    id = "div#pb-b";
-                    var div = $(id)
-                    div.attr('aria-valuenow', value)
-                    div.html(value);
+                    B_CUR = value;
+                    set_progress("File (bytes) ", B_CUR, B_MAX, "div#pb-b");
+                } else if (key == 'final_e') {
+                    E_MAX = value;
+                    set_progress("Extruded (mm) ", E_CUR, E_MAX, "div#pb-e");
+                } else if (key == 'current_e') {
+                    E_CUR = value;
+                    set_progress("Extruded (mm) ", E_CUR, E_MAX, "div#pb-e");
+                } else if (key == 'final_z') {
+                    Z_MAX = value;
+                    set_progress("Z Travel (mm) ", Z_CUR, Z_MAX, "div#pb-z");
+                } else if (key == 'current_z') {
+                    Z_CUR = value;
+                    set_progress("Z Travel (mm) ", Z_CUR, Z_MAX, "div#pb-z");
+                } else if (key == 'paused') {
+                    var div = $("span#paused")
+                    if (value == true) {
+                        div.attr('class', "badge badge-warning d-inline");
+                    } else {
+                        div.attr('class', "d-none");
+                    }
+                } else if (key == 'idle') {
+                    var div = $("span#active")
+                    if (value != true) {
+                        div.attr('class', "badge badge-success d-inline");
+                    } else {
+                        div.attr('class', "d-none");
+                    }
+                } else if (key == 'connected') {
+                    var div = $("span#disconnected")
+                    if (value != true) {
+                        div.attr('class', "badge badge-primary d-inline");
+                    } else {
+                        div.attr('class', "d-none");
+                    }
                 } else {
-                    continue;
+                    var li = $("ul#info #"+ key);
+                    if (li.length == 0) {
+                        infoelem.prepend($('<li id='+key+'>').html("<b>" + key + ":</b> " + value));
+                    } else {
+                        li.html("<b>" + key + ":</b> " + value);
+                    }
                 }
             }
         }
@@ -45,7 +92,7 @@
 
             sock.onmessage = function(evt) {
                 var msg = evt.data;
-                showMessage(msg);
+                handle_message(msg);
             };
 
             sock.onclose = function() {
@@ -92,38 +139,37 @@
 
 <div id="connection_lost"></div>
 
-<h1> {{ devices[device] }} </h1>
+<section class="jumbotron text-center">
+    <div class="container">
+        <h1  class="jumbotron-heading"> {{ devices[device] }}
+            <span id="disconnected" class="d-none">not connected</span>
+            <span id="active" class="d-none">active</span>
+            <span id="paused" class="d-none">paused</span>
+        </h1>
+        <p class="lead text-muted">
+            sudo make -j4 -me a_thing
+        </p>
+        <div class="btn-group" role="group" aria-label="foo">
+            <button id="connect" type="button" class="btn btn-primary">Connect</button>
+            <button id="disconnect" type="button" class="btn btn-danger">Disconnect</button>
+            <button id="start" type="button" class="btn btn-primary">Start</button>
+            <button id="stop" type="button" class="btn btn-warning">Stop</button>
+            <button id="abort" type="button" class="btn btn-warning">Abort</button>
+            <button id="pause" type="button" class="btn btn-primary">Pause</button>
+            <button id="resume" type="button" class="btn btn-primary">Resume</button>
+        </div>
+    </div>
+</section>
 
-<div class="dropdown">
-  <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-    {{ devices[device] }}
-  </button>
-  <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
-    {% for handle, name in devices.items() %}
-        <a class="dropdown-item" href="{{ url('device', device=handle) }}">{{ name }}</a>
-    {% endfor %}
-  </div>
-</div>
 
-
-<div class="btn-group" role="group" aria-label="foo">
-    <button id="connect" type="button" class="btn btn-primary">Connect</button>
-    <button id="disconnect" type="button" class="btn btn-danger">Disconnect</button>
-    <button id="start" type="button" class="btn btn-primary">Start</button>
-    <button id="stop" type="button" class="btn btn-warning">Stop</button>
-    <button id="abort" type="button" class="btn btn-warning">Abort</button>
-    <button id="pause" type="button" class="btn btn-primary">Pause</button>
-    <button id="resume" type="button" class="btn btn-primary">Resume</button>
+<div class="progress" style="height: 32px;">
+  <div id="pb-b" class="progress-bar progress-bar-striped progress-bar-animated bg-success" role="progressbar" style="width: 100%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">Filesize</div>
 </div>
-
-<div class="progress">
-  <div id="pb-b" class="progress-bar bg-success" role="progressbar" style="width: 35%" aria-valuenow="15" aria-valuemin="0" aria-valuemax="100">Filesize</div>
+<div class="progress" style="height: 32px;">
+  <div id="pb-z" class="progress-bar progress-bar-striped progress-bar-animated bg-info" role="progressbar" style="width: 100%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">Z Travel</div>
 </div>
-<div class="progress">
-  <div id="pb-z" class="progress-bar bg-info" role="progressbar" style="width: 25%" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100">Z Travel</div>
-</div>
-<div class="progress">
-  <div id="pb-e" class="progress-bar bg-warning" role="progressbar" style="width: 25%" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100">Extrusion Length</div>
+<div class="progress" style="height: 32px;">
+  <div id="pb-e" class="progress-bar progress-bar-striped progress-bar-animated bg-warning" role="progressbar" style="width: 100%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">Extrusion Length</div>
 </div>
 
 <ul id="info">

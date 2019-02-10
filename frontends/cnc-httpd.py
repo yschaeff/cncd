@@ -63,5 +63,9 @@ app.on_startup.append(cncd_connect)
 app.on_shutdown.append(cncd_disconnect)
 setup_routes(app)
 
-web.run_app(app)
+try:
+    web.run_app(app)
+except ConnectionRefusedError:
+    print("Connection refused.")
+
 
