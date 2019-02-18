@@ -101,6 +101,10 @@ client. Available on this same repository in ./frontends/ directory.
 
 Contributions on the GUI side are especially welcome!
 
+Experimental web client:
+
+![Screenshot](https://github.com/yschaeff/cncd/raw/master/images/cnc-httpd-screenshot.png)
+
 ### No webcam support / multiple webcam support
 Webcam support is similar to what Octoprint does. Don't manage them but just
 pass the URL to the GUI to do whatever. Except for us there is no practical limitation
