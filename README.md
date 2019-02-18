@@ -97,7 +97,7 @@ That being said the software it not very useful without anyone writing a client
 for it to connect with. Since nobody else did that yet I wrote an ncurses based
 client. Available on this same repository in ./frontends/ directory.
 
-![Screenshot](https://github.com/yschaeff/cncd/raw/master/images/cnc-screenshot.png)
+![Screenshot](https://github.com/yschaeff/cncd/raw/master/images/cnc-screenshot2.png)
 
 Contributions on the GUI side are especially welcome!
 
