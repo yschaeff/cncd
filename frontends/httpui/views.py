@@ -27,6 +27,9 @@ async def get_camera_list(request):
 async def get_action_list(request):
     controller = request.app['controller']
     return await cncd_request(controller.get_actions)
+async def get_file_list(request, device):
+    controller = request.app['controller']
+    return await cncd_request(partial(controller.get_filelist, device=device))
 async def get_device_info(request, device):
     controller = request.app['controller']
     return await cncd_request(partial(controller.get_data, device=device))
@@ -94,6 +97,10 @@ async def websocket_handler(request):
 
     info = await get_device_info(request, device)
     await ws.send_json({'info':info[device]})
+
+    filelist = await get_file_list(request, device)
+    print(filelist)
+    await ws.send_json({'filelist':filelist['files']})
 
     channel = device
     def subscribe_cb(msg):
