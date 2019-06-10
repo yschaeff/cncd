@@ -37,14 +37,25 @@ class NamedProgressBar(ProgressBar):
 class Window(urwid.WidgetWrap):
     def __init__(self, tui):
         self.tui = tui
-        self.header_str = "Q:quit q:previous L:log"
+        self.header_str = "Q:quit q:previous ::cmd L:log"
         self.header = Text(self.header_str)
         self.body = Pile([])
         self.footer = Text("placeholder")
+        self.footerpile = Pile([Text("placeholder")])
         self.frame = Frame(self.body,
-            AttrMap(self.header, 'status'), AttrMap(self.footer, 'status'), 'body')
+            AttrMap(self.header, 'status'), AttrMap(self.footerpile, 'status'), 'body')
         urwid.WidgetWrap.__init__(self, self.frame)
         self.hotkeys = {} ## key:func
+        self.hotkeys[':'] = self.start_prompt
+
+    def start_prompt(self):
+        def end_prompt(edit_text):
+            self.frame.focus_part='body'
+            self.footerpile.contents.pop()
+        prompt = CB_Edit(":", "", None, end_prompt)
+        self.footerpile.contents.append((AttrMap(prompt, 'info'), ('pack', None)))
+        self.frame.focus_part='footer'
+        self.footerpile.focus_position = 1
 
     def update(self):
         """Fetch new information and update labels, overwrite me"""
@@ -65,11 +76,12 @@ class Window(urwid.WidgetWrap):
                 self.header.set_text(self.header_str)
 
     def keypress(self, size, key):
+        if super().keypress(size, key) == None:
+            return None
         if key in self.hotkeys:
             self.hotkeys[key]()
-            return True
-        else:
-            return super().keypress(size, key)
+            return None
+        return key
 
     ## subscribe / unsubscribe here
     def start(self): pass
@@ -129,10 +141,11 @@ class CB_Edit(Edit):
         self.enter_cb = enter_cb
     def keypress(self, size, key):
         handled = super().keypress(size, key)
-        self.type_cb(self.get_edit_text())
+        if self.type_cb: self.type_cb(self.get_edit_text())
         if key == 'enter':
-            self.enter_cb()
-            return True
+            if self.enter_cb:
+                self.enter_cb(self.get_edit_text())
+                return None
         return handled
 
 class FileListWindow(Window):
@@ -149,7 +162,7 @@ class FileListWindow(Window):
         def limit(regexp):
             self.regexp = regexp
             self.populate_list()
-        def enter():
+        def enter(edit_text):
             if len(self.walker) < 1:
                 self.tui.pop_window()
                 return
