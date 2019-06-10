@@ -17,6 +17,9 @@ class CncProtocol(asyncio.Protocol):
         self.data = ""
         self.gui_exception = None
     def send_message(self, message, response_handler = None, flush=False):
+        """ If flush is set to True, the response_handler is called for
+            every received line instead of waiting for the entire message.
+            Usefull for monitoring over longer periods."""
         self.transport.write("{} {}\n".format(self.nonce, message).encode())
         self.waiters[self.nonce] = (response_handler, [], flush)
         self.nonce += 1
@@ -90,7 +93,7 @@ class Controller():
         self.protocol.send_message(cmd, partial(self.cb, gui_cb))
 
     def action(self, cmd, gui_cb):
-        self.protocol.send_message(cmd, None)
+        self.protocol.send_message(cmd, partial(self.cb, gui_cb))
 
     def hello(self):
         def controller_cb(jmsg):

@@ -37,21 +37,26 @@ class NamedProgressBar(ProgressBar):
 class Window(urwid.WidgetWrap):
     def __init__(self, tui):
         self.tui = tui
-        self.header_str = "Q:quit q:previous ::cmd L:log"
+        self.header_str = "Q:quit q:previous L:log"
         self.header = Text(self.header_str)
         self.body = Pile([])
         self.footer = Text("placeholder")
-        self.footerpile = Pile([Text("placeholder")])
+        self.footerpile = Pile([self.footer])
         self.frame = Frame(self.body,
             AttrMap(self.header, 'status'), AttrMap(self.footerpile, 'status'), 'body')
         urwid.WidgetWrap.__init__(self, self.frame)
         self.hotkeys = {} ## key:func
-        self.hotkeys[':'] = self.start_prompt
+        self.add_hotkey(':', self.start_prompt, 'cmd')
 
     def start_prompt(self):
         def end_prompt(edit_text):
-            self.frame.focus_part='body'
             self.footerpile.contents.pop()
+            self.frame.focus_part='body'
+            def cb(json_msg):
+                log.debug(str(json_msg))
+                self.display_errors(json_msg)
+                #actions = json_msg.get('actions', None)
+            self.tui.controller.action(edit_text, cb)
         prompt = CB_Edit(":", "", None, end_prompt)
         self.footerpile.contents.append((AttrMap(prompt, 'info'), ('pack', None)))
         self.frame.focus_part='footer'

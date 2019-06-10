@@ -72,12 +72,13 @@ if __name__ == '__main__':
     parser.add_argument("instance", metavar="INSTANCE", nargs='?', action="store",
             default="default", help="Instance to connect to. ('default' when not specified)")
     parser.add_argument("-c", "--config", action="store", default='~/.config/cnc.conf')
+    parser.add_argument("-L", "--log-file", action="store", default="/tmp/cnc.log")
     parser.add_argument("-l", "--log-level",
             choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
             type=str.upper, action="store", default='WARNING')
     args = parser.parse_args()
 
-    log.basicConfig(level=args.log_level)
+    log.basicConfig(level=args.log_level, filename=args.log_file)
     loop = asyncio.get_event_loop()
     main(loop, args)
     loop.close()
