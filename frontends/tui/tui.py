@@ -604,4 +604,8 @@ class Tui():
     def __exit__(self, exceptiontype, exceptionvalue, traceback):
         """Restore terminal and allow exceptions"""
         self.mainloop.stop()
+        if exceptiontype:
+            log.critical(exceptiontype)
+            log.critical(exceptionvalue)
+            log.critical(traceback)
         return False
