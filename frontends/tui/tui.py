@@ -9,6 +9,7 @@ import logging as log
 import re, time
 import webbrowser
 import shlex
+import json
 from collections import defaultdict
 
 palette = [('status', 'white,bold', 'dark blue'), \
@@ -53,9 +54,7 @@ class Window(urwid.WidgetWrap):
             self.footerpile.contents.pop()
             self.frame.focus_part='body'
             def cb(json_msg):
-                log.debug(str(json_msg))
-                self.display_errors(json_msg)
-                #actions = json_msg.get('actions', None)
+                self.footer.set_text(json.dumps(json_msg))
             self.tui.controller.action(edit_text, cb)
         prompt = CB_Edit(":", "", None, end_prompt)
         self.footerpile.contents.append((AttrMap(prompt, 'info'), ('pack', None)))
