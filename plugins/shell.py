@@ -30,5 +30,11 @@ class Plugin(SkeletonPlugin):
     async def handle_command(self, gctx, cctx, lctx):
         if len(lctx.argv) != 2:
             return "specify 1 command exactly"
-        out = subprocess.Popen(shlex.split("{}".format(lctx.argv[1])))
+        out = subprocess.run(shlex.split("{}".format(lctx.argv[1])),
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        msg = {'stdout':str(out.stdout, encoding='utf-8'),
+               'stderr':str(out.stderr, encoding='utf-8'),
+               'returncode':str(out.returncode)}
+        lctx.write_json(msg)
 
