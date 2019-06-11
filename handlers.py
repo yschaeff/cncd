@@ -194,7 +194,7 @@ async def reboot(gctx, cctx, lctx):
     await shutdown(gctx, cctx, lctx)
 
 async def help(gctx, cctx, lctx):
-    """Show this help."""
+    """Usage: 'help [COMMAND]'"""
     global handlers
     plugins = gctx["plugins"]
 

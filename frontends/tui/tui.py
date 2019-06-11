@@ -56,7 +56,7 @@ class Window(urwid.WidgetWrap):
             def cb(json_msg):
                 self.footer.set_text(json.dumps(json_msg))
             self.tui.controller.action(edit_text, cb)
-        prompt = CB_Edit(":", "", None, end_prompt)
+        prompt = CB_Hist_Edit(":", "", None, end_prompt, self.tui.command_history)
         self.footerpile.contents.append((AttrMap(prompt, 'info'), ('pack', None)))
         self.frame.focus_part='footer'
         self.footerpile.focus_position = 1
@@ -155,6 +155,36 @@ class CB_Edit(Edit):
                 self.enter_cb(self.get_edit_text())
                 return None
         return handled
+
+class CB_Hist_Edit(CB_Edit):
+    def __init__(self, caption, edit_text, type_cb, enter_cb, history):
+        super().__init__(caption, edit_text, type_cb, enter_cb)
+        self.history = history
+        self.index = len(history)
+        self.mem = None
+    def keypress(self, size, key):
+        log.warning(key)
+        if key == 'enter':
+            self.history.append(self.get_edit_text())
+        handled = super().keypress(size, key)
+        if not handled: return handled
+
+        if self.index == len(self.history) and (key=='up' or key=='down'):
+            self.mem = self.get_edit_text()
+
+        if key == 'up':
+            self.index = max(0, self.index-1)
+            self.set_edit_text(self.history[self.index])
+            return None
+        elif key == 'down':
+            self.index = min(len(self.history), self.index+1)
+            if self.index >= len(self.history):
+                self.set_edit_text(self.mem)
+            else:
+                self.set_edit_text(self.history[self.index])
+            return None
+        return key
+
 
 class FileListWindow(Window):
     def __init__(self, tui, locator, device):
@@ -550,6 +580,7 @@ class Tui():
                 unhandled_input=self._unhandled_input, event_loop=evl)
 
         self.logwindow = LogWindow(self)
+        self.command_history = ["loglevel debug", "loglevel warning", "help help"]
 
     def toggle_log(self):
         if type(self.mainloop.widget) != Columns:
