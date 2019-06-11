@@ -207,12 +207,11 @@ async def help(gctx, cctx, lctx):
             for f in filter(lambda x: x==cmd, plugin.HANDLES):
                 msg[f] = plugin.help(cmd)
     else:
-        msg = {"builtin commands":{}, "plugin commands":{}}
-        for f in handlers:
-            msg["builtin commands"][f.__name__] = f.__doc__
+        hdl = []
         for plugin in plugins:
-            for handler in plugin.HANDLES:
-                msg["plugin commands"][handler] = plugin.help(handler)
+            hdl.extend(plugin.HANDLES)
+        commands = [f.__name__ for f in handlers]
+        msg = {"builtin commands":commands, "plugin commands":hdl}
     lctx.write_json(msg)
 
 async def loglevel(gctx, cctx, lctx):
