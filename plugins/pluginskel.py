@@ -34,6 +34,9 @@ class SkeletonPlugin():
         argv = lctx.argv
         return
 
+    def help(self, cmd):
+        return "UNDOCUMENTED"
+
     def close(self):
         pass
 

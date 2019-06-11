@@ -196,13 +196,23 @@ async def reboot(gctx, cctx, lctx):
 async def help(gctx, cctx, lctx):
     """Show this help."""
     global handlers
-    msg = {"builtin commands":{}, "plugin commands":{}}
-    for f in handlers:
-        msg["builtin commands"][f.__name__] = f.__doc__
     plugins = gctx["plugins"]
-    for plugin in plugins:
-        for handler in plugin.HANDLES:
-            msg["plugin commands"][handler] = "no doc"
+
+    if len(lctx.argv) > 1:
+        msg = {}
+        cmd = lctx.argv[1]
+        for f in filter(lambda x: x.__name__==cmd, handlers):
+            msg[f.__name__] = f.__doc__
+        for plugin in plugins:
+            for f in filter(lambda x: x==cmd, plugin.HANDLES):
+                msg[f] = plugin.help(cmd)
+    else:
+        msg = {"builtin commands":{}, "plugin commands":{}}
+        for f in handlers:
+            msg["builtin commands"][f.__name__] = f.__doc__
+        for plugin in plugins:
+            for handler in plugin.HANDLES:
+                msg["plugin commands"][handler] = plugin.help(handler)
     lctx.write_json(msg)
 
 async def loglevel(gctx, cctx, lctx):
