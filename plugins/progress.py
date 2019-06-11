@@ -209,6 +209,10 @@ class Plugin(SkeletonPlugin):
         msg = {"progress":progress, "total":total}
         lctx.write_json(msg)
 
+    def help(self, cmd):
+        if cmd == 'progress': #a plugin *might* have multiple handlers registered.
+            return "'progress <DEVICE>' return file size in bytes and position in currently processed file."
+
 
     ## When CNCD restarts or exits the plugins get a change to properly close
     ## any resources they might hold.
