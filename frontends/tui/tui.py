@@ -104,6 +104,10 @@ class ScrollingListBox(ListBox):
 class LogWindow(Window):
     def __init__(self, tui):
         super().__init__(tui)
+        description = Text("NOTICE. The log displayed here is a copy of the "
+            "daemon log. Keeping the the loglevel at debug impacts "
+            "performance. When done, run ':loglevel warning'")
+        self.body.contents.append((description, ('pack', None)))
         self.walker = SimpleFocusListWalker([])
         self.listbox = ScrollingListBox(self.walker)
         self.body.contents.append((self.listbox, ('weight', 1)))
