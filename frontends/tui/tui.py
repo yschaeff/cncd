@@ -175,6 +175,7 @@ class CB_Hist_Edit(CB_Edit):
         if key == 'up':
             self.index = max(0, self.index-1)
             self.set_edit_text(self.history[self.index])
+            self.move_cursor_to_coords(size, 100, 0)
             return None
         elif key == 'down':
             self.index = min(len(self.history), self.index+1)
@@ -182,6 +183,7 @@ class CB_Hist_Edit(CB_Edit):
                 self.set_edit_text(self.mem)
             else:
                 self.set_edit_text(self.history[self.index])
+            self.move_cursor_to_coords(size, 100, 0)
             return None
         return key
 
