@@ -26,6 +26,7 @@ class CncProtocol(asyncio.Protocol):
     def connection_made(self, transport):
         self.transport = transport
     def data_received(self, data):
+        log.debug("received: " + str( data))
         ## accumulate data
         self.data += data.decode()
         while True:
@@ -62,6 +63,7 @@ class CncProtocol(asyncio.Protocol):
         pass
     def connection_lost(self, exc):
         ## TODO this might not do what we want?
+        log.warning("Connection lost.")
         loop = asyncio.get_event_loop()
         loop.stop()
 

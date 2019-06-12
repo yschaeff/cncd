@@ -163,7 +163,6 @@ class CB_Hist_Edit(CB_Edit):
         self.index = len(history)
         self.mem = None
     def keypress(self, size, key):
-        log.warning(key)
         if key == 'enter':
             self.history.append(self.get_edit_text())
         handled = super().keypress(size, key)

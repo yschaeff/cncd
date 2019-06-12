@@ -42,7 +42,9 @@ def command(line, gctx, cctx={'uid':0}, loopback=False):
     cctx['uid'] += 1
     try:
         argv = shlex.split(line)
-    except ValueError:
+    except ValueError as e:
+        nonce = cctx['uid']
+        cctx['transport'].write("{} {}\n{} .\n".format(nonce, json.dumps({'ERROR':"Could not parse."}), nonce).encode())
         return False
     log.debug(argv)
     if not argv: return True
@@ -102,11 +104,9 @@ class SocketHandler(asyncio.Protocol):
         log.debug("Received EOF")
         return False
 
-    def command(self, line):
+    def prepare_command(self, line):
         if not command(line, self.gctx, self.cctx, loopback=False):
-            self.cctx['transport'].write("You talk nonsense! HUP!\n".encode())
-            self.cctx['transport'].close()
-
+            log.info("Failed to parse '{}'".format(line))
 
     def data_received(self, raw):
         try:
@@ -120,7 +120,7 @@ class SocketHandler(asyncio.Protocol):
             if idx < 0: break
             line = self.data[:idx+1]
             self.data = self.data[idx+1:]
-            self.command(line)
+            self.prepare_command(line)
 
 def load_devices_from_cfg(gctx):
     cfg = gctx['cfg']
