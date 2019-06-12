@@ -68,11 +68,14 @@ class Plugin(SkeletonPlugin):
                 else:
                     trig = GPIO.BOTH
                 def edge_detect(action, pin):
+                    """ This can be triggered by EMF, therefore not only
+                        debounce button jitter but also require long press
+                    """
                     pre = GPIO.input(pin)
                     if (edge == 'rising' and not pre) or (edge == 'falling' and pre):
                         log.warning("GPIO spurious event. Ignoring.")
                         return
-                    time.sleep(0.2) ## This is outside async loop, thus okay.
+                    time.sleep(0.05) ## This is outside async loop, thus okay.
                     post = GPIO.input(pin)
                     if pre != post:
                         log.info("GPIO event stopped by debounce filter")
@@ -84,7 +87,7 @@ class Plugin(SkeletonPlugin):
                         command(action, self.gctx, loopback=True)
                     loop = self.gctx['loop']
                     loop.call_soon_threadsafe(partial(do, action))
-                GPIO.add_event_detect(pin, trig, partial(edge_detect, action), bouncetime=200)
+                GPIO.add_event_detect(pin, trig, partial(edge_detect, action), bouncetime=500)
                 self.fs_at_close.append(partial(GPIO.remove_event_detect, pin))
 
         if export:
