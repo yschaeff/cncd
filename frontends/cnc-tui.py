@@ -32,7 +32,8 @@ def main(loop, args):
     unix_socket = cfg.get(args.instance, 'unix_socket', fallback="")
 
     if shell_pre:
-        pre = subprocess.Popen(shlex.split('"{}"'.format(shell_pre)))
+        pre = subprocess.Popen(shlex.split('"{}"'.format(shell_pre)), stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+        nextline = pre.stdout.readline()
         if shell_pre_sleep: time.sleep(float(shell_pre_sleep))
 
     def kill():
