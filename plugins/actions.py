@@ -3,10 +3,21 @@ from pluginmanager import Action
 from plugins.pluginskel import SkeletonPlugin
 
 class Plugin(SkeletonPlugin):
-    """Inherit from this class for all Plugins"""
     NAME = "Action"
     PLUGIN_API_VERSION = 0
     HANDLES = ["actions"] #of type string
+    ACTIONS = [] #of type Action
+
+    def __init__(self, datastore, gctx:dict):
+        super().__init__(datastore, gctx)
+        cfg = gctx['cfg']
+        if 'actions' in cfg:
+            cfg_actions = cfg['actions']
+        else:
+            cfg_actions = defaultdict(str)
+        for key, value in cfg_actions.items():
+            self.ACTIONS.append(Action(value, key, "({})".format(value)))
+
 
     async def handle_command(self, gctx, cctx, lctx):
         pluginmanager = gctx['pluginmanager']
