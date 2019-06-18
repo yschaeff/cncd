@@ -36,7 +36,7 @@ class Plugin(SkeletonPlugin):
 
         gcode = argv[2]
         r = await device.inject(gcode)
-        if not r: return "injection failed."
+        if not r: return "GCODE injection failed."
 
     def close(self) -> None:
         pass

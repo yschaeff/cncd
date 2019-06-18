@@ -12,6 +12,9 @@ import shlex
 import json
 from collections import defaultdict
 
+EDIT_KEYS = ["backspace", "delete", "home", "end", "left", "right", "enter"]
+NUMERICALS = [i for i in "0123456789.+-"] + EDIT_KEYS
+
 palette = [('status', 'white,bold', 'dark blue'), \
         ('selected', 'black', 'white'),
 
@@ -41,13 +44,21 @@ class Window(urwid.WidgetWrap):
         self.header_str = "Q:quit q:previous L:log"
         self.header = Text(self.header_str)
         self.body = Pile([])
-        self.footer = Text("placeholder")
+        self.footer = Text("No messages")
         self.footerpile = Pile([self.footer])
         self.frame = Frame(self.body,
             AttrMap(self.header, 'status'), AttrMap(self.footerpile, 'status'), 'body')
         urwid.WidgetWrap.__init__(self, self.frame)
         self.hotkeys = {} ## key:func
         self.add_hotkey(':', self.start_prompt, 'cmd')
+
+    def actions(self):
+        window = ActionWindow(self.tui)
+        self.tui.push_window(window)
+
+    def webcams(self):
+        window = WebcamWindow(self.tui)
+        self.tui.push_window(window)
 
     def start_prompt(self):
         def end_prompt(edit_text):
@@ -146,11 +157,14 @@ class LogWindow(Window):
         self.tui.controller.stop_logs()
 
 class CB_Edit(Edit):
-    def __init__(self, caption, edit_text, type_cb, enter_cb):
+    def __init__(self, caption, edit_text, type_cb, enter_cb, whitelist=None):
         super().__init__(caption, edit_text)
         self.type_cb = type_cb
         self.enter_cb = enter_cb
+        self.whitelist = whitelist
     def keypress(self, size, key):
+        if self.whitelist and key not in self.whitelist:
+            return key
         handled = super().keypress(size, key)
         if self.type_cb: self.type_cb(self.get_edit_text())
         if key == 'enter':
@@ -248,6 +262,94 @@ class FileListWindow(Window):
             self.populate_list()
         self.tui.controller.get_filelist(filelist_cb, self.locator)
 
+class ManualControlWindow(Window):
+    def __init__(self, tui, locator, device):
+        super().__init__(tui)
+        self.locator = locator
+        self.device = device
+
+        self.add_hotkey('u', self.update, "update")
+        self.add_hotkey('w', self.webcams, "webcams")
+        self.add_hotkey('a', self.actions, "actions")
+
+        self.body.contents.append((Text("Selected device \"{}\"".format(device)), ('pack', None)))
+        self.body.contents.append((Divider(), ('pack', None)))
+
+        self.walker = SimpleFocusListWalker([])
+        listbox = ListBox(self.walker)
+        self.body.contents.append((listbox, ('weight', 1)))
+        self.body.focus_position = 2
+        self.update()
+
+    def update(self):
+        self.walker.clear()
+        locator = self.locator
+        def cmd_cb(json_msg):
+            self.display_errors(json_msg)
+
+        button = Button("[h] Home (G28 W)")
+        def button_cb(button, locator):
+            self.tui.controller.action("gcode {} 'G28 W'".format(locator), cmd_cb)
+        urwid.connect_signal(button, 'click', button_cb, locator)
+        self.walker.append(AttrMap(button, None, focus_map='selected'))
+        self.add_hotkey('h', partial(button_cb, button, locator), "home", omit_header=True)
+
+        def edit_cb(txt):
+            self.tui.controller.action("gcode {} 'G90'".format(locator), cmd_cb)
+            self.tui.controller.action("gcode {} 'G1 X{}'".format(locator, txt), cmd_cb)
+        edit = CB_Edit("Move to ABS X (mm): ", "0", None, edit_cb, NUMERICALS)
+        self.walker.append(AttrMap(edit, None, focus_map='selected'))
+
+        def edit_cb(txt):
+            self.tui.controller.action("gcode {} 'G90'".format(locator), cmd_cb)
+            self.tui.controller.action("gcode {} 'G1 Y{}'".format(locator, txt), cmd_cb)
+        edit = CB_Edit("Move to ABS Y (mm): ", "0", None, edit_cb, NUMERICALS)
+        self.walker.append(AttrMap(edit, None, focus_map='selected'))
+
+        def edit_cb(txt):
+            self.tui.controller.action("gcode {} 'G90'".format(locator), cmd_cb)
+            self.tui.controller.action("gcode {} 'G1 Z{}'".format(locator, txt), cmd_cb)
+        edit = CB_Edit("Move to ABS Z (mm): ", "0", None, edit_cb, NUMERICALS)
+        self.walker.append(AttrMap(edit, None, focus_map='selected'))
+
+        def edit_cb(txt):
+            self.tui.controller.action("gcode {} 'G1 F{}'".format(locator, txt), cmd_cb)
+        edit = CB_Edit("Set Feedrate mm/min: ", "", None, edit_cb, NUMERICALS)
+        self.walker.append(AttrMap(edit, None, focus_map='selected'))
+
+        def edit_cb(txt):
+            self.tui.controller.action("gcode {} 'M104 S{}'".format(locator, txt), cmd_cb)
+        edit = CB_Edit("Set Extruder Temperature °C: ", "0", None, edit_cb, NUMERICALS)
+        self.walker.append(AttrMap(edit, None, focus_map='selected'))
+
+        def edit_cb(txt):
+            self.tui.controller.action("gcode {} 'M140 S{}'".format(locator, txt), cmd_cb)
+        edit = CB_Edit("Set Bed Temperature °C: ", "0", None, edit_cb, NUMERICALS)
+        self.walker.append(AttrMap(edit, None, focus_map='selected'))
+
+        self.walker.append(Divider())
+
+        def edit_cb(edit, txt):
+            key = txt[-1]
+            m = {'h':"X-",'l':"X",'j':"Y-",'k':"Y",'a':"Z",'z':"Z-"}
+            if key not in m: return
+            edit.set_edit_text("{}".format(m[key]))
+            increment = 10
+            c = "gcode {} 'G1 ".format(locator) + m[key] + "{}'".format(increment)
+            self.tui.controller.action("gcode {} 'G91'".format(locator), cmd_cb)
+            self.tui.controller.action(c, cmd_cb)
+
+            #self.tui.controller.action("gcode {} 'G1 F{}'".format(locator, txt), cmd_cb)
+        edit = CB_Edit("VI Move: ", "Use the hjklaz keys", edit_cb, None, [i for i in "hjklaz"]+["enter"])
+        edit.type_cb = partial(edit_cb, edit)
+        self.walker.append(AttrMap(edit, None, focus_map='selected'))
+
+        ## unload E-100 F2000
+        ## load E100 F300
+        ## maybe set relative extruder first
+
+
+
 class DeviceWindow(Window):
     def __init__(self, tui, locator, device):
         super().__init__(tui)
@@ -273,14 +375,6 @@ class DeviceWindow(Window):
         self.add_hotkey('a', self.actions, "actions")
         self.status = defaultdict(str)
         self.update()
-
-    def actions(self):
-        window = ActionWindow(self.tui)
-        self.tui.push_window(window)
-
-    def webcams(self):
-        window = WebcamWindow(self.tui)
-        self.tui.push_window(window)
 
     def start(self):
         self.update()
@@ -468,6 +562,14 @@ class DeviceWindow(Window):
         self.walker.append(AttrMap(button, None, focus_map='selected'))
         self.add_hotkey('l', partial(button_cb, button, locator), "load", omit_header=True)
 
+        button = Button("[m] Manual Control")
+        def button_cb(button, locator):
+            window = ManualControlWindow(self.tui, locator, self.device)
+            self.tui.push_window(window)
+        urwid.connect_signal(button, 'click', button_cb, locator)
+        self.walker.append(AttrMap(button, None, focus_map='selected'))
+        self.add_hotkey('m', partial(button_cb, button, locator), "manual", omit_header=True)
+
 class ActionWindow(Window):
     def __init__(self, tui):
         super().__init__(tui)
@@ -543,14 +645,6 @@ class DeviceListWindow(Window):
         self.add_hotkey('w', self.webcams, "webcams")
         self.add_hotkey('a', self.actions, "actions")
         self.update()
-
-    def actions(self):
-        window = ActionWindow(self.tui)
-        self.tui.push_window(window)
-
-    def webcams(self):
-        window = WebcamWindow(self.tui)
-        self.tui.push_window(window)
 
     def update(self):
         def devlist_cb(json_msg):
