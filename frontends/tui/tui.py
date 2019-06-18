@@ -327,9 +327,40 @@ class ManualControlWindow(Window):
         edit = CB_Edit("Set Bed Temperature °C: ", "0", None, edit_cb, NUMERICALS)
         self.walker.append(AttrMap(edit, None, focus_map='selected'))
 
+        button = Button("[L] Load filament (G1 E100 F300)")
+        def button_cb(button, locator):
+            self.tui.controller.action("gcode {} 'M83'".format(locator), cmd_cb)
+            self.tui.controller.action("gcode {} 'G1 E100 F300'".format(locator), cmd_cb)
+        urwid.connect_signal(button, 'click', button_cb, locator)
+        self.walker.append(AttrMap(button, None, focus_map='selected'))
+        self.add_hotkey('L', partial(button_cb, button, locator), "load", omit_header=True)
+
+        button = Button("[U] Unload filament (G1 E-100 F2000)")
+        def button_cb(button, locator):
+            self.tui.controller.action("gcode {} 'M83'".format(locator), cmd_cb)
+            self.tui.controller.action("gcode {} 'G1 E-100 F2000'".format(locator), cmd_cb)
+        urwid.connect_signal(button, 'click', button_cb, locator)
+        self.walker.append(AttrMap(button, None, focus_map='selected'))
+        self.add_hotkey('U', partial(button_cb, button, locator), "unload", omit_header=True)
+
+        button = Button("[r] Release steppers (M18)")
+        def button_cb(button, locator):
+            self.tui.controller.action("gcode {} 'M18'".format(locator), cmd_cb)
+        urwid.connect_signal(button, 'click', button_cb, locator)
+        self.walker.append(AttrMap(button, None, focus_map='selected'))
+        self.add_hotkey('r', partial(button_cb, button, locator), "release", omit_header=True)
+
         self.walker.append(Divider())
 
+        def enter_cb(edit, txt):
+            if edit.hjkl_active:
+                edit.hjkl_active = False
+                edit.set_edit_text( "[enter] to activate" )
+            else:
+                edit.hjkl_active = True
+                edit.set_edit_text( "[enter] to deactivate" )
         def edit_cb(edit, txt):
+            if not edit.hjkl_active: return
             key = txt[-1]
             m = {'h':"X-",'l':"X",'j':"Y-",'k':"Y",'a':"Z",'z':"Z-"}
             if key not in m: return
@@ -340,13 +371,14 @@ class ManualControlWindow(Window):
             self.tui.controller.action(c, cmd_cb)
 
             #self.tui.controller.action("gcode {} 'G1 F{}'".format(locator, txt), cmd_cb)
-        edit = CB_Edit("VI Move: ", "Use the hjklaz keys", edit_cb, None, [i for i in "hjklaz"]+["enter"])
-        edit.type_cb = partial(edit_cb, edit)
+        edit = CB_Edit("VI Move: ", "[enter] to activate", edit_cb, enter_cb, [i for i in "hjklaz"]+["enter"])
+        edit.type_cb = partial(edit_cb, edit) ##hack to solve cyclic dependency
+        edit.enter_cb = partial(enter_cb, edit) ##hack to solve cyclic dependency
+        edit.hjkl_active = False
         self.walker.append(AttrMap(edit, None, focus_map='selected'))
 
-        ## unload E-100 F2000
-        ## load E100 F300
-        ## maybe set relative extruder first
+        ## maybe set relative extruder first M83
+        ##M18 release steppers
 
 
 
