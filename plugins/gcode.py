@@ -38,9 +38,6 @@ class Plugin(SkeletonPlugin):
         r = await device.inject(gcode)
         if not r: return "injection failed."
 
-        #msg = {"progress":progress, "total":total}
-        #lctx.write_json(msg)
-
     def close(self) -> None:
         pass
 

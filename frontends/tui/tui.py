@@ -54,7 +54,10 @@ class Window(urwid.WidgetWrap):
             self.footerpile.contents.pop()
             self.frame.focus_part='body'
             def cb(json_msg):
-                self.footer.set_text(json.dumps(json_msg))
+                if json_msg:
+                    self.footer.set_text(json.dumps(json_msg))
+                else:
+                    self.footer.set_text("ok")
             self.tui.controller.action(edit_text, cb)
         prompt = CB_Hist_Edit(":", "", None, end_prompt, self.tui.command_history)
         self.footerpile.contents.append((AttrMap(prompt, 'info'), ('pack', None)))
