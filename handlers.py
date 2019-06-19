@@ -4,6 +4,7 @@ import logging as log
 import os
 import traceback
 import time
+from version import VERSION, API_VERSION
 
 """
 gctx - Global context. No direct writes allowed. Exists during lifetime of program.
@@ -79,7 +80,7 @@ async def stat(gctx, cctx, lctx, dev):
 
 async def hello(gctx, cctx, lctx):
     """version etc"""
-    msg = {"cncd":1, "api":1, "time":time.time()}
+    msg = {"cncd":VERSION, "api":API_VERSION, "time":time.time()}
     lctx.write_json(msg)
 
 async def devlist(gctx, cctx, lctx):
