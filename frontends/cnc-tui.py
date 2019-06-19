@@ -5,6 +5,7 @@ import tui.tui as tui
 from functools import partial
 from collections import defaultdict
 import logging as log
+import logging.handlers
 import shlex, sys
 import argparse, time, subprocess
 from configparser import ConfigParser
@@ -17,14 +18,14 @@ def main(loop, args):
     cfgfile = expanduser(args.config)
     if not cfg.read(cfgfile):
         log.critical("Could not open configuration file ({})".format(args.config))
-        return
+        return 1
     if not args.instance in cfg.sections():
         log.critical("No configuration for '{}' found.".format(args.instance))
         log.critical("Available: '{}'".format(cfg.sections()))
-        return
+        return 1
     if not cfg.has_section(args.instance):
         log.critical("No configuration section '[{}]' found.".format(args.instance))
-        return
+        return 1
 
     shell_pre = cfg.get(args.instance, 'shell_pre', fallback=None)
     shell_pre_sleep = cfg.get(args.instance, 'shell_pre_sleep', fallback=None)
@@ -46,7 +47,7 @@ def main(loop, args):
     result = connect(loop, socketpath)
     if not result:
         kill()
-        return
+        return 1
     transport, protocol = result
     controller = Controller(protocol)
 
@@ -67,19 +68,28 @@ def main(loop, args):
     for task in pending: task.cancel()
     loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
     kill()
+    return 0
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("instance", metavar="INSTANCE", nargs='?', action="store",
             default="default", help="Instance to connect to. ('default' when not specified)")
     parser.add_argument("-c", "--config", action="store", default='~/.config/cnc.conf')
-    parser.add_argument("-L", "--log-file", action="store", default="/tmp/cnc.log")
+    parser.add_argument("-L", "--log-file", action="store")
     parser.add_argument("-l", "--log-level",
             choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
             type=str.upper, action="store", default='WARNING')
     args = parser.parse_args()
 
-    log.basicConfig(level=args.log_level, filename=args.log_file)
+    if args.log_file:
+        handlers = [log.FileHandler(args.log_file)]
+    else:
+        mem = logging.handlers.MemoryHandler(1000, flushLevel=log.CRITICAL, target=log.StreamHandler())
+        handlers = [mem]
+    log.basicConfig(level=args.log_level, handlers=handlers)
     loop = asyncio.get_event_loop()
-    main(loop, args)
+    r = main(loop, args)
     loop.close()
+    for handler in handlers:
+        handler.close()
+    exit(r)
