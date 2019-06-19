@@ -182,6 +182,9 @@ class CB_Hist_Edit(CB_Edit):
     def keypress(self, size, key):
         if key == 'enter':
             self.history.append(self.get_edit_text())
+        elif key == 'esc': ## cancel input
+            self.set_edit_text("")
+            key = 'enter'
         handled = super().keypress(size, key)
         if not handled: return handled
 
