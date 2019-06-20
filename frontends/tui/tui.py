@@ -362,11 +362,15 @@ class ManualControlWindow(Window):
             else:
                 edit.hjkl_active = True
                 edit.set_edit_text( "[enter] to deactivate" )
+                edit.move_cursor_to_coords(size, 100, 0)
         def edit_cb(edit, txt):
             if not edit.hjkl_active: return
             key = txt[-1]
             m = {'h':"X-",'l':"X",'j':"Y-",'k':"Y",'a':"Z",'z':"Z-"}
-            if key not in m: return
+            if key not in m:
+                edit.set_edit_text( "Please use one of 'hjklaz' keys" )
+                edit.move_cursor_to_coords(size, 100, 0)
+                return
             edit.set_edit_text("{}".format(m[key]))
             increment = 10
             c = "gcode {} 'G1 ".format(locator) + m[key] + "{}'".format(increment)
