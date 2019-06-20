@@ -163,14 +163,13 @@ class CB_Edit(Edit):
         self.enter_cb = enter_cb
         self.whitelist = whitelist
     def keypress(self, size, key):
+        if key == 'enter' and self.enter_cb:
+            self.enter_cb(self.get_edit_text())
+            return None
         if self.whitelist and key not in self.whitelist:
             return key
         handled = super().keypress(size, key)
         if self.type_cb: self.type_cb(self.get_edit_text())
-        if key == 'enter':
-            if self.enter_cb:
-                self.enter_cb(self.get_edit_text())
-                return None
         return handled
 
 class CB_Hist_Edit(CB_Edit):
@@ -358,18 +357,17 @@ class ManualControlWindow(Window):
         def enter_cb(edit, txt):
             if edit.hjkl_active:
                 edit.hjkl_active = False
-                edit.set_edit_text( "[enter] to activate" )
+                edit.set_edit_text( "[enter] to activate / deactivate" )
             else:
                 edit.hjkl_active = True
-                edit.set_edit_text( "[enter] to deactivate" )
-                edit.move_cursor_to_coords(size, 100, 0)
+                edit.set_edit_text( "" )
+                self.footer.set_text("Use keys 'hjklaz' to move printer.")
         def edit_cb(edit, txt):
             if not edit.hjkl_active: return
             key = txt[-1]
             m = {'h':"X-",'l':"X",'j':"Y-",'k':"Y",'a':"Z",'z':"Z-"}
             if key not in m:
-                edit.set_edit_text( "Please use one of 'hjklaz' keys" )
-                edit.move_cursor_to_coords(size, 100, 0)
+                self.footer.set_text("key '{}' not handled. Please use keys 'hjklaz' to move printer.".format(key))
                 return
             edit.set_edit_text("{}".format(m[key]))
             increment = 10
@@ -378,7 +376,7 @@ class ManualControlWindow(Window):
             self.tui.controller.action(c, cmd_cb)
 
             #self.tui.controller.action("gcode {} 'G1 F{}'".format(locator, txt), cmd_cb)
-        edit = CB_Edit("VI Move: ", "[enter] to activate", edit_cb, enter_cb, [i for i in "hjklaz"]+["enter"])
+        edit = CB_Edit("VI Move: ", "[enter] to activate", edit_cb, enter_cb, [i for i in "hjklaz"])
         edit.type_cb = partial(edit_cb, edit) ##hack to solve cyclic dependency
         edit.enter_cb = partial(enter_cb, edit) ##hack to solve cyclic dependency
         edit.hjkl_active = False
