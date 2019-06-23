@@ -1,6 +1,4 @@
-# CNCD
-
-Control your 3D printer farm safely over the Internet.
+# Control your 3D printer farm safely over the Internet.
 
 ![Logo](https://github.com/yschaeff/cncd/raw/master/images/cncd.png)
 
