@@ -13,22 +13,31 @@ of driving multiple printers simultaneously.
 - Plugin support
 - Light weight and fast!
 
-CNCD is designed to be agnostic of the type of CNC device. While primaraly tested on 3D printers any GCODE accepting device such as plotters, laser cutters or routers should be supported. CNCD is as bare bones as possible with extra functionality modular implemented as plugins.
+CNCD is designed to be agnostic of the type of CNC device. While primarily
+tested on 3D printers any GCODE accepting device such as plotters, laser
+cutters or routers should be supported. CNCD is as bare bones as possible with
+extra functionality modular implemented as plugins.
 
 ## Current Plugins
 - Manual operation (move, preheat, etc), custom GCODE injection.
-- Control GPIOs on RaspberryPi.
+- Control GPIOs on Raspberry Pi.
 - Temperature monitoring.
-- Live progress monitoring with respect to Z-height, filesize, and extrusion length.
+- Live progress monitoring with respect to Z-height, file size, and extrusion
+  length.
 - Precooked actions exposed to User Interface.
 - Custom shell commands (e.g. Enable webcam server)
 
-The sever side software has no User Interface (think of it like a webserver) and should be able to support any client UI. The reference implementation for a clients is terminal based (TUI).
+The sever side software has no User Interface (think of it like a webserver)
+and should be able to support any client UI. The reference implementation for a
+clients is terminal based (TUI).
 
 ![Screenshot](https://github.com/yschaeff/cncd/raw/master/images/cnc-screenshot2.png)
 
-An experimental web client exists but is not actively worked on. Contributions to this client are especially welcome.
+An experimental web client exists but is not actively worked on. Contributions
+to this client are especially welcome.
 
 ![Screenshot](https://github.com/yschaeff/cncd/raw/master/images/cnc-httpd-screenshot.png)
 
+## Installation
 
+See INSTALL.md.
