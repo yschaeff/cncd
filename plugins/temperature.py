@@ -60,6 +60,7 @@ class Plugin(SkeletonPlugin, ConfigPlugin):
         if not connected:
             return
         await self.datastore.update(handle, "last_temp_request", 0)
+        await asyncio.sleep(2) ## give the device some time to start
         task = asyncio.ensure_future(self.poll(device))
         task.add_done_callback(self.poll_cb)
         ## TODO add exception handler
