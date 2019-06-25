@@ -1,6 +1,7 @@
 import logging as log
 from pluginmanager import Action
 from plugins.pluginskel import SkeletonPlugin
+from collections import defaultdict
 
 class Plugin(SkeletonPlugin):
     NAME = "Action"
