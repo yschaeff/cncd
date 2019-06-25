@@ -36,6 +36,8 @@ so we can enable password less login.
   - sudo userdel -r pi
   - sudo rm /etc/sudoers.d/010_pi-nopasswd
 
+## Setup dependencies
+
 Now we create a user called 'cnc' which will run CNCD and make sure we give it
 access to the serial ports. We also copy the authorized_keys file from our user
 above so later the client software can log in without a password prompt.
@@ -62,8 +64,10 @@ finally checkout CNCD itself.
     - exit
 
 Now we configure the system to make sure CNCD gets started at boot time.
-Additionally we use UDEV to make sure our printer/cnc device always gets assigend
-the same TTY. This is recommended especially when you are connecting multiple devices to your machine. E.g. when two devices could have a race which get assigned /dev/ttyACM0 and which /dev/ttyACM1.
+Additionally we use UDEV to make sure our printer/cnc device always gets
+assigned the same TTY. This is recommended especially when you are connecting
+multiple devices to your machine. E.g. two devices could have a race which
+get assigned /dev/ttyACM0 and which /dev/ttyACM1.
 
 - Configure CNCD
   - sudo cp ~cnc/cncd/contrib/cncd.service /lib/systemd/system/
@@ -73,10 +77,21 @@ the same TTY. This is recommended especially when you are connecting multiple de
   - sudo systemctl enable cncd
   - sudo systemctl start cncd
 
-From your local machine you can now setup a ssh tunnel. for example on my 
-local network:
+By default CNCD does not listen on a network interface for security reasons.
+We can however leverage the power of SSH to tunnel the Unix Domain Socket to
+our local machine where we will run the client software.
+
+To test our setup we forward the socket and connect to it using netcat. For
+example in my case.
 
 - ssh -L /tmp/cncd.sock:/var/run/cncd/cncd.sock -M cnc@10.0.0.29
+- nc -U /tmp/cncd.sock
+
+There are many tricks we can do with SSH. E.g. when the machine is not directly
+accessible from the internet but another on the network is. We can use it as a
+jump host
+
+- ssh -J <JUMPHOST_IP> -L /tmp/cncd.sock:/var/run/cncd/cncd.sock -nNT cnc@10.0.0.90
 
 You can now use the TUI to connect!
 
