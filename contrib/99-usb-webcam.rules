@@ -1,0 +1,6 @@
+# get this information with
+# lsusb
+# udevadm info -a -n /dev/video0
+# cp <this file> /etc/udev/rules.d/99-usb-webcam.rules
+SUBSYSTEM=="video4linux", ATTRS{serial}=="0F1D4950", SYMLINK+="videoC270"
+
