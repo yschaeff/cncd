@@ -6,11 +6,17 @@ them carefully and make sure you understand each step.
 ## Install Raspbian
 
 Assuming you don't have an operating system installed yet we can install Raspbian
-on the RPI. 
+on the RPI.
 
 - Download and install Raspbian
   - Download at https://www.raspberrypi.org/downloads/raspbian/
   - dd if=debian.img of=/dev/sdX
+
+- For a headless Pi make an empty file called 'ssh' in the boot partition of the SD card.
+    - pmount /dev/sdbX1
+    - touch /media/sdX1/ssh
+    - pumount /dev/sdbX1
+- Alternatively when you have a screen 
 
 - Boot rPI and attach screen & keyboard (user/pass: pi/raspberry)
   - Make the rPI accessable over the network:
@@ -19,7 +25,7 @@ on the RPI.
   - note its IP address: ip addr
   - Disconnect screen and keyboard
 
-I advice to create a user for yourself with sudo rights and delete the pi
+I would advice to create a user for yourself with sudo rights and delete the pi
 user. You do not have to but since we are connecting this thing to the Internet
 you MUST ABSOLUTELY change your password! Copy your public ssh key to your user
 so we can enable password less login.
@@ -63,6 +69,8 @@ finally checkout CNCD itself.
     - mkdir gcode
     - exit
 
+## Server Configuration
+
 Now we configure the system to make sure CNCD gets started at boot time.
 Additionally we use UDEV to make sure our printer/cnc device always gets
 assigned the same TTY. This is recommended especially when you are connecting
@@ -73,7 +81,7 @@ get assigned /dev/ttyACM0 and which /dev/ttyACM1.
   - sudo cp ~cnc/cncd/contrib/cncd.service /lib/systemd/system/
   - sudo cp ~cnc/cncd/contrib/99-usb-serial.rules /etc/udev/rules.d/
   - sudo cp ~cnc/cncd/cncd.conf /etc/
-  - edit the above 3 files to your liking, See below for my configuration.
+  - edit the above 3 files to your liking, See below for configuration examples.
   - sudo systemctl enable cncd
   - sudo systemctl start cncd
 
@@ -84,26 +92,48 @@ our local machine where we will run the client software.
 To test our setup we forward the socket and connect to it using netcat. For
 example in my case.
 
-- ssh -L /tmp/cncd.sock:/var/run/cncd/cncd.sock -M cnc@10.0.0.29
+- ssh -L /tmp/cncd.sock:/var/run/cncd/cncd.sock -N cnc@10.0.0.29
 - nc -U /tmp/cncd.sock
 
-There are many tricks we can do with SSH. E.g. when the machine is not directly
-accessible from the internet but another on the network is. We can use it as a
-jump host
+You should see a greeting messages from CNCD. There are many tricks we can do
+with SSH. E.g. when the machine is not directly accessible from the internet
+but another machine on the network is. We can use it as a jump host
 
 - ssh -J <JUMPHOST_IP> -L /tmp/cncd.sock:/var/run/cncd/cncd.sock -nNT cnc@10.0.0.90
 
-You can now use the TUI to connect!
+## Client Configuration
 
-And to transfer files:
-- rsync -rav gcode/ cnc@10.0.0.29:~/gcode
+The client configuration is quite minimal it only needs to know where and how
+to connect. A config file (copy to ~/.config/cnc.conf) could look like this:
+
+```ini
+[default]
+unix_socket = /var/run/cncd/cncd.sock
+
+[rpi]
+shell_pre = "/usr/bin/ssh -L %(unix_socket)s:/var/run/cncd/cncd.sock -nNT cnc@10.0.0.29"
+shell_post = "/bin/rm -f %(unix_socket)s"
+unix_socket = /tmp/cncd-rpi.sock
+```
+
+In this case when the client, cnc-tui.py (I symlinked it at /usr/local/bin/cnc)
+is run without arguments it will try to connect to a local unix socket, When
+run as 'cnc-tui.py rpi' it will setup a tunnel to that configured device first.
+
+To transfer files you can use any method you like to get your gcode files into
+the gcode directory we created earlier. Make it a SMB, NFS mount for example.
+Personally I prefer rsync:
+
+```shell
+rsync -rav gcode/ cnc@10.0.0.29:~/gcode
+```
 
 ## example configuration:
 
 ### UDEV
 
 This rule is to make sure my printer gets assigned the same TTY regardless of
-any other USB serial device connected. If you have multiple machines I highly recomment
+any other USB serial device connected. If you have multiple machines I highly recommend
 this. Figure out the correct setting with lsusb and udevadm
 
 ```udev
@@ -138,26 +168,26 @@ WantedBy=multi-user.target
 unix_socket = /var/run/cncd/cncd.sock
 log_level = warning
 plugin_path = /home/cnc/cncd/plugins
-plugins_enabled = progress, gpio, pluginlist, data, logforward, trace, temperature, actions, shell
+plugins_enabled = progress, gpio, pluginlist, data, logforward, trace, temperature, actions, shell, gcode
 cnc_devices = prusa_i3, zmorph, franken_plotter
 cameras = cam1
 
 [prusa_i3]
 name = Prusa i3 MK2s
 port = serial:///dev/ttyACM0@115200
-library = ./gcode/
+library = /home/cnc/gcode/i3/
 firmware = marlin
 
 [franken_plotter]
 name = plotter
 port = serial:///dev/ttyUSB0@115200
-library = ./gcode/
+library = /home/cnc/gcode/plotter/
 firmware = generic
 
 [zmorph]
 name = Zmorph VX
 port = tcp://192.168.0.176:23
-library = /home/yuri/repo/3d-models/zmorph/printer/
+library = /home/cnc/gcode/zmorph/
 firmware = smoothie
 
 [cam1]
@@ -198,27 +228,3 @@ edge = falling
 start webcam = sudo systemctl start videoC270.service
 stop webcam = sudo systemctl stop videoC270.service
 ```
-
-### CNC Config (client)
-
-The TUI client can be found in the frontends directory and started with ./cnc.py. I suggest making a softlink to it in /usr/local/bin/. For example '''sudo /home/yuri/repo/cncd/frontend/cnc.py -s cnc'''
-It accepts a -c parameter for the configuration file. If not specified it will try
-'~/.config/cnc.conf'. It will also accept the name of CNCD instance if configured.
-
-''' vi ~/.config/cnc.conf '''
-
-'''ini
-## Default instance to connect to
-[default]
-unix_socket = /home/yuri/repo/cncd/.cncd.sock
-
-[okki]
-shell_pre = "/usr/bin/ssh -L %(unix_socket)s:/var/run/cncd/cncd.sock -nNT cnc@10.0.0.34 -p 22"
-shell_pre_sleep = 1
-shell_post = "/bin/rm -f %(unix_socket)s"
-unix_socket = /tmp/cncd.sock
-'''
-
-To connect to the remote client above type: '''cnc okki'''
-The unix domain socket will be tunneled over SSH giving you a secure connection
-to CNCD.

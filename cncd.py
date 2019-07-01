@@ -197,14 +197,17 @@ if __name__ == '__main__':
             log.info('Serving on {}'.format(server.sockets[0].getsockname()))
 
         ##UNIX
-        coro = loop.create_unix_server(functools.partial(SocketHandler, gctx),
-                path=general["unix_socket"])
-        try:
-            server = loop.run_until_complete(coro)
-            gctx['srv'].append(server)
-            log.info('Serving on {}'.format(server.sockets[0].getsockname()))
-        except FileNotFoundError:
-            log.error("Socket file {} not accessible.".format(general["unix_socket"]))
+        if "unix_socket" in general:
+            coro = loop.create_unix_server(functools.partial(SocketHandler, gctx),
+                    path=general["unix_socket"])
+            try:
+                server = loop.run_until_complete(coro)
+                gctx['srv'].append(server)
+                log.info('Serving on {}'.format(server.sockets[0].getsockname()))
+            except FileNotFoundError:
+                log.error("Socket file {} not accessible.".format(general["unix_socket"]))
+            ## set the socket in a mode where anyone in de cnc group is allowed to connect
+            os.chmod(general["unix_socket"], 0o760)
 
         try:
             loop.run_forever()

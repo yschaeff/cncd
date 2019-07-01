@@ -2,4 +2,5 @@
 # lsusb
 # udevadm info -a -n /dev/ttyACM0
 # cp <this file> /etc/udev/rules.d/99-usb-serial.rules
-SUBSYSTEM=="tty", ATTRS{idVendor}=="10c4", ATTRS{idProduct}=="ea60", ATTRS{serial}=="00492F60", SYMLINK+="ttySLAB0"
+SUBSYSTEM=="tty", ATTRS{serial}=="CZPX2017X003XK19721", ATTRS{product}=="Original Prusa i3 MK2", SYMLINK+="ttyPrusaMK2"
+

@@ -4,10 +4,10 @@
 Description=Computer Numerical Control Daemon
 
 [Service]
-ExecStart=/home/cnc/cncd/cncd.py
+ExecStart=/opt/cncd/cncd.py
 ## never ever run as root!
-User=cnc
-Group=cnc
+User=cncd
+Group=cnc-operators
 ## We need systemd to create /var/run/cncd/ for us
 RuntimeDirectory=cncd
 Restart=on-failure

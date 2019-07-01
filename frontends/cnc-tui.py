@@ -44,7 +44,11 @@ def main(loop, args):
             post = subprocess.Popen(shlex.split('"{}"'.format(shell_post)))
 
     socketpath = unix_socket
-    result = connect(loop, socketpath)
+    try:
+        result = connect(loop, socketpath)
+    except PermissionError as e:
+        log.critical("Cant open socket {} (r+w): {}".format(socketpath, e))
+        return 1
     if not result:
         kill()
         return 1
