@@ -45,7 +45,11 @@ class Plugin(SkeletonPlugin):
             edge = cfg[section].get('edge', '')
             pud = cfg[section].get('pud', '')
             export = cfg[section].get('export', '')
-            self.setup(label, mode, int(pin), txt, action, edge, pud, export)
+            try:
+                self.setup(label, mode, int(pin), txt, action, edge, pud, export)
+            except ValueError as e:
+                log.error(f"Setup failed for pin {label} ({pin}): {e}")
+
 
     def setup(self, label, mode, pin, txt, action, edge, pud, export):
         if mode == 'output':
