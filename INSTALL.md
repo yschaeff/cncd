@@ -32,7 +32,8 @@ so we can enable password less login.
 
 - Log in to the pi via ssh and create a new user
   - ssh pi@10.0.0.29
-  - sudo useradd -m -G sudo -s /bin/bash MY_USER_NAME
+  - sudo groupadd cnc-operators
+  - sudo useradd -m -G sudo,cnc-operators -s /bin/bash MY_USER_NAME
   - sudo passwd MY_USER_NAME
   - sudo reboot
 
@@ -52,9 +53,7 @@ above so later the client software can log in without a password prompt.
   - sudo vi /etc/ssh/sshd_config
     - DELETE: #PasswordAuthentication yes
     - ADD     PasswordAuthentication no
-  - sudo useradd -r -m -G dialout,gpio -s /bin/bash cnc
-  - sudo cp -r .ssh/ ~cnc/
-  - sudo chown -R cnc:cnc ~cnc/.ssh/
+  - sudo useradd -rM -G dialout,gpio -s /bin/bash cnc
 
 CNCD doesn't have much direct dependencies. We will install them and also 
 finally checkout CNCD itself.
@@ -64,10 +63,13 @@ finally checkout CNCD itself.
   - sudo apt upgrade
   - sudo apt install git python3-pip python3-serial python3-rpi.gpio
   - sudo pip3 install pyserial-asyncio
-  - sudo -i -u cnc
-    - git clone https://github.com/yschaeff/cncd.git cncd
-    - mkdir gcode
-    - exit
+
+  - sudo mkdir /var/lib/gcode
+  - sudo chown cnc:cnc-operators /var/lib/gcode
+  - sudo chmod g+ws /var/lib/gcode
+  - sudo mkdir /opt/cncd
+  - sudo chown $(whoami) /opt/cncd/
+  - git clone https://github.com/yschaeff/cncd.git /opt/cncd/
 
 ## Server Configuration
 
@@ -127,6 +129,11 @@ Personally I prefer rsync:
 ```shell
 rsync -rav gcode/ cnc@10.0.0.29:~/gcode
 ```
+
+## setup webcam server
+  - cd /opt/cncd/contrib
+  - sudo ./setup_webcams
+  - sudo systemctl start webcam0.service ##(and others)
 
 ## example configuration:
 
