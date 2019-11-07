@@ -51,10 +51,15 @@ class Window(urwid.WidgetWrap):
         urwid.WidgetWrap.__init__(self, self.frame)
         self.hotkeys = {} ## key:func
         self.add_hotkey(':', self.start_prompt, 'cmd')
+        self.add_hotkey('u', self.sync, 'sync')
 
     def actions(self):
         window = ActionWindow(self.tui)
         self.tui.push_window(window)
+
+    def sync(self):
+        lines = self.tui.controller.sync()
+        self.footer.set_text(lines[-1].strip())
 
     def webcams(self):
         window = WebcamWindow(self.tui)
@@ -270,7 +275,7 @@ class ManualControlWindow(Window):
         self.locator = locator
         self.device = device
 
-        self.add_hotkey('u', self.update, "update")
+        self.add_hotkey('U', self.update, "update")
         self.add_hotkey('w', self.webcams, "webcams")
         self.add_hotkey('a', self.actions, "actions")
 
@@ -407,7 +412,7 @@ class DeviceWindow(Window):
         listbox = ListBox(self.walker)
         self.body.contents.append((listbox, ('weight', 1)))
         self.body.focus_position = 5
-        self.add_hotkey('u', self.update, "update")
+        self.add_hotkey('U', self.update, "update")
         self.add_hotkey('w', self.webcams, "webcams")
         self.add_hotkey('a', self.actions, "actions")
         self.status = defaultdict(str)
@@ -617,7 +622,7 @@ class ActionWindow(Window):
         listbox = ListBox(self.walker)
         self.body.contents.append((listbox, ('weight', 1)))
         self.body.focus_position = 2
-        self.add_hotkey('u', self.update, "update")
+        self.add_hotkey('U', self.update, "update")
         self.update()
 
     def update(self):
@@ -648,7 +653,7 @@ class WebcamWindow(Window):
         listbox = ListBox(self.walker)
         self.body.contents.append((listbox, ('weight', 1)))
         self.body.focus_position = 2
-        self.add_hotkey('u', self.update, "update")
+        self.add_hotkey('U', self.update, "update")
         self.update()
 
     def update(self):
@@ -678,7 +683,7 @@ class DeviceListWindow(Window):
         listbox = ListBox(self.walker)
         self.body.contents.append((listbox, ('weight', 1)))
         self.body.focus_position = 2
-        self.add_hotkey('u', self.update, "update")
+        self.add_hotkey('U', self.update, "update")
         self.add_hotkey('w', self.webcams, "webcams")
         self.add_hotkey('a', self.actions, "actions")
         self.update()

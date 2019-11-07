@@ -68,9 +68,10 @@ class CncProtocol(asyncio.Protocol):
         loop.stop()
 
 class Controller():
-    def __init__(self, protocol):
+    def __init__(self, protocol, sync_method):
         self.protocol = protocol
         self.filenames = defaultdict(str)
+        self.sync_method = sync_method
         self.hello()
 
     def set_filename(self, device, filename):
@@ -167,6 +168,13 @@ class Controller():
     def stop_logs(self):
         cmd = "tracelog stop"
         self.protocol.send_message(cmd, None)
+
+    def sync(self):
+        log.debug(f"trying to sync with command {self.sync_method}")
+        if self.sync_method:
+            proc = subprocess.Popen(shlex.split('"{}"'.format(self.sync_method)), stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+            return proc.stdout.readlines()
+        return None
 
 def connect(loop, path):
     future = loop.create_unix_connection(CncProtocol, path)

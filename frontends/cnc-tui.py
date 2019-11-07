@@ -31,6 +31,7 @@ def main(loop, args):
     shell_pre_sleep = cfg.get(args.instance, 'shell_pre_sleep', fallback=None)
     shell_post = cfg.get(args.instance, 'shell_post', fallback=None)
     unix_socket = cfg.get(args.instance, 'unix_socket', fallback="")
+    sync = cfg.get(args.instance, 'sync', fallback="")
 
     if shell_pre:
         pre = subprocess.Popen(shlex.split('"{}"'.format(shell_pre)), stdout=subprocess.PIPE, stdin=subprocess.PIPE)
@@ -53,7 +54,7 @@ def main(loop, args):
         kill()
         return 1
     transport, protocol = result
-    controller = Controller(protocol)
+    controller = Controller(protocol, sync)
 
     with tui.Tui(loop, controller) as utui:
         try:
