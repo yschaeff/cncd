@@ -69,7 +69,7 @@ def main(loop, args):
 
     log.debug("terminating")
     transport.close()
-    pending = asyncio.Task.all_tasks()
+    pending = asyncio.all_tasks(loop)
     for task in pending: task.cancel()
     loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
     kill()
