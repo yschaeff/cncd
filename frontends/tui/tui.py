@@ -336,7 +336,7 @@ class ManualControlWindow(Window):
 
         button = Button("[L] Load filament (G1 E100 F300)")
         def button_cb(button, locator):
-            self.tui.controller.action("gcode {} 'M83'".format(locator), cmd_cb)
+            self.tui.controller.action("gcode {} 'G91'".format(locator), cmd_cb)
             self.tui.controller.action("gcode {} 'G1 E100 F300'".format(locator), cmd_cb)
         urwid.connect_signal(button, 'click', button_cb, locator)
         self.walker.append(AttrMap(button, None, focus_map='selected'))
@@ -344,7 +344,7 @@ class ManualControlWindow(Window):
 
         button = Button("[U] Unload filament (G1 E-100 F2000)")
         def button_cb(button, locator):
-            self.tui.controller.action("gcode {} 'M83'".format(locator), cmd_cb)
+            self.tui.controller.action("gcode {} 'G91'".format(locator), cmd_cb)
             self.tui.controller.action("gcode {} 'G1 E-100 F2000'".format(locator), cmd_cb)
         urwid.connect_signal(button, 'click', button_cb, locator)
         self.walker.append(AttrMap(button, None, focus_map='selected'))
