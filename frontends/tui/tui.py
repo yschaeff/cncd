@@ -515,7 +515,7 @@ class DeviceWindow(Window):
                 attr = 'Flabel'
             w = AttrMap(Text(label), attr, attr)
             container.contents.append((w, container.options('pack')))
-        ignore = ['last_temp_request']
+        ignore = ['last_temp_request', 'temperature_obj']
         # We really got to properly parse this to some struct first
         container.contents.clear()
         ## progress

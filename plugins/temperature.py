@@ -76,3 +76,4 @@ class Plugin(SkeletonPlugin, ConfigPlugin):
         groups = self.tmp_pttrn.findall(response)
         if groups:
             await self.datastore.update(handle, "temperature", str(groups))
+            await self.datastore.update(handle, "temperature_obj", groups)

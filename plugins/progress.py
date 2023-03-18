@@ -155,7 +155,7 @@ class Plugin(SkeletonPlugin):
         device, = args
         handle = device.handle
         await self.datastore.update(handle, "stoptime", time())
-        ## We only occationally (2Hz) write progress to the datastore as to
+        ## We only occasionally (2Hz) write progress to the datastore as to
         ## not load the client/CNCD to much. So when we are done we might still
         ## have some information buffered, Flush that.
         accumulate = self.localstore.get(handle, 'accumulate')
