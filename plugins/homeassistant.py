@@ -93,7 +93,10 @@ class Plugin(SkeletonPlugin, ConfigPlugin):
         self.send_binary(device, "connected", {"state": "off"})
 
     async def gcode_open_hook(self, device, filename):
-        self.send(device, "filename", {"state": filename})
+        fn_s = filename.rfind("/") + 1
+        fn_e = filename.rfind(".")
+        fn = filename[fn_s:fn_e]
+        self.send(device, "filename", {"state": fn})
         self.send_binary(device, "active", {"state": "on"})
 
     async def gcode_done_hook(self, device):
