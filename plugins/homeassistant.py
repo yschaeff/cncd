@@ -4,6 +4,7 @@ import os, asyncio, re, concurrent, traceback
 from time import time
 from collections import defaultdict
 from requests import post
+from time import time
 
 
 class Plugin(SkeletonPlugin, ConfigPlugin):
@@ -25,12 +26,14 @@ class Plugin(SkeletonPlugin, ConfigPlugin):
             ('robot', 'Device.gcode_done_hook'):[self.gcode_done_hook],
             ('datastore', 'DataStore.update'):[self.datastore_update],
         }
+        self.ratelimit = {}
 
         cfg = self.config('homeassistant')
         if not cfg:
             log.error("Home Assistant plugin loaded but no configuration available.")
         self.token = cfg['token']
         self.url = cfg['url']
+        self.limit = int(cfg['limit'])
 
     def ha_sanitize(value):
         return value.replace("@", "at")
@@ -61,8 +64,17 @@ class Plugin(SkeletonPlugin, ConfigPlugin):
                 }
         self.send(device, entity, data)
 
+    def ratelimiter(self, handle):
+        now = time()
+        if not handle in self.ratelimit or now - self.ratelimit[handle] > self.limit:
+            self.ratelimit[handle] = now
+            return True
+        return False
+
     async def datastore_update(self, datastore, handle, name, value):
+        # we can't do this sens async yet. So better not update to often
         if name == "temperature_obj":
+            if not self.ratelimiter(f"{handle}_temperature"): return
             device = self.gctx['dev'][handle]
             for T in value:
                 entity, d = T.split(":")
@@ -71,9 +83,10 @@ class Plugin(SkeletonPlugin, ConfigPlugin):
                 if len(ts) > 1:
                     self.send_temperature(device, f"set_{entity}", ts[1])
         elif name == "progress": #filesize
-            device = self.gctx['dev'][handle]
             progress = value
             total = self.datastore.get(handle, "filesize")
+            if progress != total and not self.ratelimiter(f"{handle}_progress"): return
+            device = self.gctx['dev'][handle]
             pct = 0
             try:
                 pct = int(progress/total * 10000)/100
